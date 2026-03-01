@@ -1,6 +1,6 @@
 {
   "name": "dataradar",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "electron/main.cjs",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
     "lint": "next lint",
     "menubar:dev": "electron .",
     "menubar:pack": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir --mac",
-    "menubar:dist": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac"
+    "menubar:dist": "npm run build && electron-builder --mac"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
@@ -31,6 +31,7 @@
     "@types/topojson-specification": "^1.0.5",
     "electron": "^30.5.1",
     "electron-builder": "^24.13.3",
+    "electron-builder-notarize": "^1.5.2",
     "eslint": "^9",
     "eslint-config-next": "^15.2.0",
     "tailwindcss": "^4",
@@ -57,10 +58,17 @@
         "dmg",
         "zip"
       ],
-      "hardenedRuntime": false,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "electron/entitlements.plist",
+      "entitlementsInherit": "electron/entitlements.plist",
+      "signIgnore": ["!node_modules/"],
       "extendInfo": {
         "LSUIElement": true
       }
+    },
+    "dmg": {
+      "sign": false
     }
   }
 }
