@@ -176,7 +176,7 @@ export default function MenubarPage() {
               How to get your key
             </p>
             <ol className="space-y-1.5 text-[11px] text-zinc-400 leading-relaxed">
-              <li>1. Create an account on <a href="https://datafa.st" className="text-cyan-400 hover:text-cyan-300">DataFast</a></li>
+              <li>1. Create an account on <a href="https://datafa.st" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300">DataFast</a></li>
               <li>2. Add the tracking script to your website</li>
               <li>3. Copy your API key from Settings → API</li>
             </ol>
