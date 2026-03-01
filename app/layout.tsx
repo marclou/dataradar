@@ -16,7 +16,7 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://dataradar.app"),
+  metadataBase: new URL("https://dataradar.datafa.st"),
   title: "DATARADAR — real-time visitor radar",
   description:
     "Watch your website visitors appear on a live radar. A fun real-time analytics experience powered by DataFast.",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     title: "DATARADAR — real-time visitor radar",
     description:
       "Watch your website visitors appear on a live radar. Powered by DataFast.",
-    url: "https://dataradar.app",
+    url: "https://dataradar.datafa.st",
     siteName: "DATARADAR",
     locale: "en_US",
     type: "website",

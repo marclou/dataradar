@@ -8,7 +8,7 @@ Powered by [DataFast](https://datafa.st) analytics API.
 
 **[Download the latest release](https://github.com/marclou/dataradar/releases/latest)** — macOS menubar app (Apple Silicon)
 
-Or try the [live demo](https://dataradar.app) in your browser.
+Or try the [live demo](https://dataradar.datafa.st) in your browser.
 
 ## Setup
 
