@@ -96,14 +96,8 @@ export default function RadarPage() {
 					</>
 				)}
 			</div>
-			<div className="flex items-center gap-4">
-				{data && (
-					<div className="flex items-center gap-2 text-xs text-stone-500">
-						<span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-						{data.count} visitor{data.count !== 1 ? "s" : ""} online
-					</div>
-				)}
-				<button
+		<div className="flex items-center gap-4">
+			<button
 					onClick={handleExit}
 					className="text-xs text-stone-600 hover:text-stone-400 transition-colors cursor-pointer"
 				>
@@ -127,12 +121,6 @@ export default function RadarPage() {
 						<RadarScope visitors={data.visitors} onSelectVisitor={(v) => setSelected(v)} />
 					) : null}
 
-					{/* Counter text */}
-					{data && (
-						<p className="text-stone-500 text-sm font-[family-name:var(--font-mono)]">
-							{data.count} visitor{data.count !== 1 ? "s" : ""} in the last 10 min
-						</p>
-					)}
 				</div>
 
 				{/* Side panel */}
@@ -141,7 +129,7 @@ export default function RadarPage() {
 
 					{selected ? <VisitorCard visitor={selected} onClose={() => setSelected(null)} /> : null}
 
-					{data && <EventFeed events={data.recentEvents} payments={data.recentPayments} />}
+					{data && <EventFeed events={data.recentEvents} payments={data.recentPayments} visitorCount={data.count} />}
 				</div>
 			</div>
 
