@@ -1,0 +1,73 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgCore" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(512 512) rotate(90) scale(560)">
+      <stop offset="0" stop-color="#07161C"/>
+      <stop offset="0.55" stop-color="#040B11"/>
+      <stop offset="1" stop-color="#010507"/>
+    </radialGradient>
+    <radialGradient id="aura" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(512 520) rotate(90) scale(340)">
+      <stop offset="0" stop-color="#2CD8FF" stop-opacity="0.26"/>
+      <stop offset="0.6" stop-color="#2CD8FF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#2CD8FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sweep" x1="512" y1="512" x2="875" y2="810" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#31E4FF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#31E4FF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="scopeClip">
+      <circle cx="512" cy="512" r="372"/>
+    </clipPath>
+  </defs>
+
+  <rect x="18" y="18" width="988" height="988" rx="238" fill="url(#bgCore)"/>
+  <rect x="18" y="18" width="988" height="988" rx="238" fill="url(#aura)"/>
+
+  <circle cx="512" cy="512" r="408" stroke="#1CE4FF" stroke-opacity="0.18" stroke-width="2"/>
+  <circle cx="512" cy="512" r="372" stroke="#2CE7FF" stroke-opacity="0.23" stroke-width="2.2"/>
+  <circle cx="512" cy="512" r="300" stroke="#2CE7FF" stroke-opacity="0.11" stroke-width="1.4"/>
+  <circle cx="512" cy="512" r="224" stroke="#2CE7FF" stroke-opacity="0.09" stroke-width="1.4"/>
+  <circle cx="512" cy="512" r="148" stroke="#2CE7FF" stroke-opacity="0.07" stroke-width="1.2"/>
+
+  <line x1="140" y1="512" x2="884" y2="512" stroke="#2CE7FF" stroke-opacity="0.08" stroke-width="1.2"/>
+  <line x1="512" y1="140" x2="512" y2="884" stroke="#2CE7FF" stroke-opacity="0.08" stroke-width="1.2"/>
+
+  <g clip-path="url(#scopeClip)">
+    <path d="M512 512L900 854L512 512Z" fill="url(#sweep)"/>
+    <line x1="512" y1="512" x2="900" y2="854" stroke="#3DE9FF" stroke-opacity="0.70" stroke-width="4.2"/>
+  </g>
+
+  <g filter="url(#softGlow)">
+    <circle cx="612" cy="470" r="8" fill="#35E9FF"/>
+    <circle cx="640" cy="502" r="8" fill="#35E9FF"/>
+    <circle cx="672" cy="526" r="8" fill="#35E9FF"/>
+    <circle cx="702" cy="492" r="8" fill="#35E9FF"/>
+    <circle cx="736" cy="572" r="8" fill="#35E9FF"/>
+    <circle cx="598" cy="552" r="8" fill="#35E9FF"/>
+
+    <circle cx="560" cy="488" r="9" fill="#FFD84D"/>
+    <circle cx="620" cy="536" r="9" fill="#FFD84D"/>
+
+    <circle cx="396" cy="572" r="8" fill="#35E9FF"/>
+    <circle cx="424" cy="628" r="8" fill="#35E9FF"/>
+    <circle cx="340" cy="554" r="8" fill="#35E9FF"/>
+  </g>
+
+  <circle cx="512" cy="512" r="10" fill="#4CF0FF"/>
+  <circle cx="512" cy="512" r="22" fill="#4CF0FF" fill-opacity="0.18"/>
+
+  <g stroke="#2CE7FF" stroke-opacity="0.22" stroke-width="2">
+    <line x1="512" y1="88" x2="512" y2="108"/>
+    <line x1="512" y1="916" x2="512" y2="936"/>
+    <line x1="88" y1="512" x2="108" y2="512"/>
+    <line x1="916" y1="512" x2="936" y2="512"/>
+  </g>
+
+  <rect x="18" y="18" width="988" height="988" rx="238" stroke="#52EEFF" stroke-opacity="0.10" stroke-width="2"/>
+</svg>

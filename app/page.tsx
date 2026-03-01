@@ -1,185 +1,130 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
-import { DEMO_API_KEY, LS_KEY } from "@/lib/constants";
+import { DEMO_API_KEY, DEMO_POLL_INTERVAL_MS } from "@/lib/constants";
+import { fetchRadarData } from "@/lib/fetch-radar";
+import type { RadarPayload, Visitor } from "@/lib/types";
 import marcPic from "@/app/marc.png";
+import RadarScope from "@/app/radar/components/RadarScope";
+import VisitorCard from "@/app/radar/components/VisitorCard";
+import EventFeed from "@/app/radar/components/EventFeed";
+
+const GITHUB_RELEASE = "https://github.com/marclou/dataradar/releases/latest";
 
 export default function HomePage() {
-  const router = useRouter();
-  const [apiKey, setApiKey] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+	const [data, setData] = useState<RadarPayload | null>(null);
+	const [selected, setSelected] = useState<Visitor | null>(null);
+	const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
-  useEffect(() => {
-    const stored = localStorage.getItem(LS_KEY);
-    if (stored && stored !== DEMO_API_KEY) setApiKey(stored);
-  }, []);
+	const poll = useCallback(async () => {
+		try {
+			const payload = await fetchRadarData(DEMO_API_KEY);
+			setData(payload);
+		} catch {}
+	}, []);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    const key = apiKey.trim();
-    if (!key) {
-      setError("Please enter your API key");
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/datafast/radar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: key }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Invalid API key");
-      }
-      localStorage.setItem(LS_KEY, key);
-      router.push("/radar");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
+	useEffect(() => {
+		poll();
+		intervalRef.current = setInterval(poll, DEMO_POLL_INTERVAL_MS);
+		return () => clearInterval(intervalRef.current);
+	}, [poll]);
 
-  function handleDemo() {
-    localStorage.setItem(LS_KEY, DEMO_API_KEY);
-    router.push("/radar");
-  }
+	return (
+		<div className="min-h-dvh flex flex-col items-center relative overflow-hidden">
+			{/* Ambient BG */}
+			<div className="pointer-events-none fixed inset-0">
+				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-cyan-500/[0.03] blur-[120px]" />
+			</div>
 
-  return (
-    <div className="relative min-h-dvh flex flex-col items-center justify-center px-4 py-16 overflow-hidden">
-      {/* Ambient background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-cyan-500/[0.03] blur-[100px]" />
-        <div className="absolute top-1/4 left-1/3 w-[300px] h-[300px] rounded-full bg-cyan-400/[0.02] blur-[80px]" />
-      </div>
+			{/* Hero */}
+			<div className="relative z-10 flex flex-col items-center pt-12 sm:pt-16 pb-6 px-4">
+				<h1 className="font-[family-name:var(--font-mono)] text-4xl sm:text-6xl font-bold tracking-[0.15em] uppercase bg-gradient-to-b from-white via-cyan-200 to-cyan-500/60 bg-clip-text text-transparent mb-3 text-center">
+					DATARADAR
+				</h1>
+				<p className="text-stone-400 text-center text-sm sm:text-base sm:text-[1.06rem] max-w-[410px] leading-relaxed mb-6">
+					A real-time visitor radar for your website. Watch visitors light up as the scanner sweeps across the
+					map.
+				</p>
 
-      <main className="relative z-10 flex flex-col items-center w-full max-w-md">
-        {/* Title */}
-        <h1 className="font-[family-name:var(--font-mono)] text-5xl sm:text-6xl font-bold tracking-[0.15em] uppercase bg-gradient-to-b from-white via-cyan-200 to-cyan-500/60 bg-clip-text text-transparent mb-3 text-center">
-          DATARADAR
-        </h1>
+				{/* Download CTA */}
+				<a
+					href={GITHUB_RELEASE}
+					className="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-cyan-500 text-black font-semibold text-sm hover:bg-cyan-400 transition-colors"
+				>
+					<svg
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="2"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					>
+						<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+						<polyline points="7 10 12 15 17 10" />
+						<line x1="12" y1="15" x2="12" y2="3" />
+					</svg>
+					Download for macOS
+				</a>
+			</div>
 
-        {/* Tagline */}
-        <p className="text-stone-400 text-center text-base sm:text-lg mb-10 max-w-xs leading-relaxed">
-          Watch your website visitors light up on a live radar
-        </p>
+			{/* Live demo */}
+			<div className="relative z-10 flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 px-4 pb-8 w-full max-w-6xl">
+				{/* Radar */}
+				<div className="flex flex-col items-center gap-4">
+					{data ? (
+						<RadarScope visitors={data.visitors} onSelectVisitor={(v) => setSelected(v)} />
+					) : (
+						<div className="w-[min(440px,85vw)] aspect-square rounded-full border border-stone-800/50 flex items-center justify-center">
+							<div className="flex flex-col items-center gap-3">
+								<div className="w-6 h-6 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+								<span className="text-xs text-stone-600">Loading demo...</span>
+							</div>
+						</div>
+					)}
+				</div>
 
-        {/* API key form */}
-        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
-          <input
-            type="text"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Paste your DataFast API key"
-            autoFocus
-            className="w-full px-4 py-3.5 rounded-xl font-[family-name:var(--font-mono)] text-sm text-white placeholder:text-stone-600 glass outline-none focus:ring-1 focus:ring-cyan-500/40 transition-all"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 rounded-xl font-semibold text-sm tracking-wide bg-cyan-500 text-black hover:bg-cyan-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {loading ? "Connecting..." : "Launch radar"}
-          </button>
-        </form>
+				{/* Side panel */}
+				<div className="flex flex-col items-center lg:items-start gap-6 min-w-[280px]">
+					{selected && <VisitorCard visitor={selected} onClose={() => setSelected(null)} />}
+					{data && (
+						<EventFeed
+							events={data.recentEvents}
+							payments={data.recentPayments}
+							visitorCount={data.count}
+						/>
+					)}
+				</div>
+			</div>
 
-        {/* Error */}
-        {error && (
-          <p className="mt-3 text-sm text-red-400/90 text-center animate-fade-in-up">
-            {error}
-          </p>
-        )}
+			{/* Footer */}
+			<footer className="relative z-10 pb-6 flex flex-col items-center gap-3">
+				<p className="text-stone-700 text-[10px]">
+					Powered by{" "}
+					<a href="https://datafa.st" className="text-stone-600 hover:text-stone-400 transition-colors">
+						DataFast
+					</a>
+				</p>
+			</footer>
 
-        {/* Divider */}
-        <div className="flex items-center gap-4 w-full my-8">
-          <div className="flex-1 h-px bg-stone-800" />
-          <span className="text-stone-600 text-xs uppercase tracking-widest">
-            or
-          </span>
-          <div className="flex-1 h-px bg-stone-800" />
-        </div>
-
-        {/* Demo button */}
-        <button
-          onClick={handleDemo}
-          className="text-stone-400 hover:text-white text-sm transition-colors cursor-pointer"
-        >
-          View a demo →
-        </button>
-
-        {/* How to get started */}
-        <div className="mt-16 w-full">
-          <h2 className="text-stone-500 text-xs uppercase tracking-widest mb-6 text-center">
-            How to get started
-          </h2>
-          <ol className="space-y-5">
-            {[
-              {
-                step: "1",
-                text: (
-                  <>
-                    Create a free account on{" "}
-                    <a
-                      href="https://datafa.st"
-                      className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2"
-                    >
-                      DataFast
-                    </a>
-                  </>
-                ),
-              },
-              {
-                step: "2",
-                text: "Add the tracking script to your website",
-              },
-              {
-                step: "3",
-                text: "Copy your API key from settings → API",
-              },
-            ].map(({ step, text }) => (
-              <li key={step} className="flex items-start gap-4">
-                <span className="flex-shrink-0 w-7 h-7 rounded-full border border-stone-700 flex items-center justify-center text-xs text-stone-400 font-[family-name:var(--font-mono)]">
-                  {step}
-                </span>
-                <span className="text-stone-400 text-sm pt-0.5">{text}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        {/* Powered by */}
-        <p className="mt-14 text-stone-600 text-xs">
-          Powered by{" "}
-          <a
-            href="https://datafa.st"
-            className="text-stone-500 hover:text-stone-300 transition-colors"
-          >
-            DataFast
-          </a>
-        </p>
-      </main>
-
-      {/* Creator badge */}
-      <a
-        href="https://x.com/marclou"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs text-stone-400 hover:text-stone-200 transition-colors"
-      >
-        <Image
-          src={marcPic}
-          alt="Marc Lou"
-          width={20}
-          height={20}
-          className="w-5 h-5 rounded-full object-cover"
-        />
-        by Marc Lou
-      </a>
-    </div>
-  );
+			{/* Creator badge */}
+			<a
+				href="https://x.com/marclou"
+				target="_blank"
+				rel="noopener noreferrer"
+				className="fixed bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs text-stone-400 hover:text-stone-200 transition-colors z-20"
+			>
+				<Image
+					src={marcPic}
+					alt="Marc Lou"
+					width={20}
+					height={20}
+					className="w-5 h-5 rounded-full object-cover"
+				/>
+				by Marc Lou
+			</a>
+		</div>
+	);
 }
