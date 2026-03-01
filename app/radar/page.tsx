@@ -12,167 +12,148 @@ import VisitorCard from "./components/VisitorCard";
 import EventFeed from "./components/EventFeed";
 
 export default function RadarPage() {
-  const router = useRouter();
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [data, setData] = useState<RadarPayload | null>(null);
-  const [selected, setSelected] = useState<Visitor | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
+	const router = useRouter();
+	const [apiKey, setApiKey] = useState<string | null>(null);
+	const [data, setData] = useState<RadarPayload | null>(null);
+	const [selected, setSelected] = useState<Visitor | null>(null);
+	const [error, setError] = useState("");
+	const [loading, setLoading] = useState(true);
+	const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
-  useEffect(() => {
-    const key = localStorage.getItem(LS_KEY);
-    if (!key) {
-      router.replace("/");
-      return;
-    }
-    setApiKey(key);
-  }, [router]);
+	useEffect(() => {
+		const key = localStorage.getItem(LS_KEY);
+		if (!key) {
+			router.replace("/");
+			return;
+		}
+		setApiKey(key);
+	}, [router]);
 
-  const poll = useCallback(async () => {
-    if (!apiKey) return;
-    try {
-      const payload = await fetchRadarData(apiKey);
-      setData(payload);
-      setError("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch data");
-    } finally {
-      setLoading(false);
-    }
-  }, [apiKey]);
+	const poll = useCallback(async () => {
+		if (!apiKey) return;
+		try {
+			const payload = await fetchRadarData(apiKey);
+			setData(payload);
+			setError("");
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to fetch data");
+		} finally {
+			setLoading(false);
+		}
+	}, [apiKey]);
 
-  useEffect(() => {
-    if (!apiKey) return;
-    poll();
-    intervalRef.current = setInterval(poll, POLL_INTERVAL_MS);
-    return () => clearInterval(intervalRef.current);
-  }, [apiKey, poll]);
+	useEffect(() => {
+		if (!apiKey) return;
+		poll();
+		intervalRef.current = setInterval(poll, POLL_INTERVAL_MS);
+		return () => clearInterval(intervalRef.current);
+	}, [apiKey, poll]);
 
-  function handleExit() {
-    localStorage.removeItem(LS_KEY);
-    router.replace("/");
-  }
+	function handleExit() {
+		localStorage.removeItem(LS_KEY);
+		router.replace("/");
+	}
 
-  if (!apiKey) return null;
+	if (!apiKey) return null;
 
-  const isDemo = apiKey === DEMO_API_KEY;
+	const isDemo = apiKey === DEMO_API_KEY;
 
-  return (
-    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden">
-      {/* Ambient BG */}
-      <div className="pointer-events-none fixed inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-cyan-500/[0.02] blur-[120px]" />
-      </div>
+	return (
+		<div className="min-h-dvh flex flex-col items-center relative overflow-hidden">
+			{/* Ambient BG */}
+			<div className="pointer-events-none fixed inset-0">
+				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-cyan-500/[0.02] blur-[120px]" />
+			</div>
 
-      {/* Header */}
-      <header className="relative z-10 w-full flex items-center justify-between px-5 py-4">
-        <div className="flex items-center gap-3">
-          <h1 className="font-[family-name:var(--font-mono)] text-sm font-bold tracking-[0.15em] uppercase text-stone-300">
-            DATARADAR
-          </h1>
-          {isDemo && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              demo
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          {data && (
-            <div className="flex items-center gap-2 text-xs text-stone-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              {data.count} visitor{data.count !== 1 ? "s" : ""} online
-            </div>
-          )}
-          <button
-            onClick={handleExit}
-            className="text-xs text-stone-600 hover:text-stone-400 transition-colors cursor-pointer"
-          >
-            Exit
-          </button>
-        </div>
-      </header>
+			{/* Header */}
+			<header className="relative z-10 w-full flex items-center justify-between px-5 py-4">
+				<div className="flex items-center gap-3">
+					<h1 className="font-[family-name:var(--font-mono)] text-sm font-bold tracking-[0.15em] uppercase text-stone-300">
+						DATARADAR
+					</h1>
+					{isDemo && (
+						<span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+							demo
+						</span>
+					)}
+				</div>
+				<div className="flex items-center gap-4">
+					{data && (
+						<div className="flex items-center gap-2 text-xs text-stone-500">
+							<span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+							{data.count} visitor{data.count !== 1 ? "s" : ""} online
+						</div>
+					)}
+					<button
+						onClick={handleExit}
+						className="text-xs text-stone-600 hover:text-stone-400 transition-colors cursor-pointer"
+					>
+						Exit
+					</button>
+				</div>
+			</header>
 
-      {/* Main content */}
-      <div className="relative z-10 flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 px-4 pb-8 w-full max-w-6xl">
-        {/* Radar */}
-        <div className="flex flex-col items-center gap-6">
-          {loading && !data ? (
-            <div className="w-[min(440px,85vw)] aspect-square rounded-full border border-stone-800/50 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-6 h-6 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
-                <span className="text-xs text-stone-600">Scanning...</span>
-              </div>
-            </div>
-          ) : data ? (
-            <RadarScope
-              visitors={data.visitors}
-              onSelectVisitor={(v) => setSelected(v)}
-            />
-          ) : null}
+			{/* Main content */}
+			<div className="relative z-10 flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 px-4 pb-8 w-full max-w-6xl">
+				{/* Radar */}
+				<div className="flex flex-col items-center gap-6">
+					{loading && !data ? (
+						<div className="w-[min(440px,85vw)] aspect-square rounded-full border border-stone-800/50 flex items-center justify-center">
+							<div className="flex flex-col items-center gap-3">
+								<div className="w-6 h-6 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+								<span className="text-xs text-stone-600">Scanning...</span>
+							</div>
+						</div>
+					) : data ? (
+						<RadarScope visitors={data.visitors} onSelectVisitor={(v) => setSelected(v)} />
+					) : null}
 
-          {/* Counter text */}
-          {data && (
-            <p className="text-stone-500 text-sm font-[family-name:var(--font-mono)]">
-              {data.count} visitor{data.count !== 1 ? "s" : ""} in the last 10
-              min
-            </p>
-          )}
-        </div>
+					{/* Counter text */}
+					{data && (
+						<p className="text-stone-500 text-sm font-[family-name:var(--font-mono)]">
+							{data.count} visitor{data.count !== 1 ? "s" : ""} in the last 10 min
+						</p>
+					)}
+				</div>
 
-        {/* Side panel */}
-        <div className="flex flex-col items-center lg:items-start gap-6 min-w-[280px]">
-          {error && (
-            <div className="text-sm text-red-400/80 glass rounded-xl px-4 py-3">
-              {error}
-            </div>
-          )}
+				{/* Side panel */}
+				<div className="flex flex-col items-center lg:items-start gap-6 min-w-[280px]">
+					{error && <div className="text-sm text-red-400/80 glass rounded-xl px-4 py-3">{error}</div>}
 
-          {selected ? (
-            <VisitorCard
-              visitor={selected}
-              onClose={() => setSelected(null)}
-            />
-          ) : data && data.visitors.length > 0 ? (
-            <div className="text-center lg:text-left space-y-2">
-              <p className="text-stone-600 text-xs">
-                Click a dot to inspect a visitor
-              </p>
-            </div>
-          ) : null}
+					{selected ? <VisitorCard visitor={selected} onClose={() => setSelected(null)} /> : null}
 
-          {data && <EventFeed events={data.recentEvents} payments={data.recentPayments} />}
-        </div>
-      </div>
+					{data && <EventFeed events={data.recentEvents} payments={data.recentPayments} />}
+				</div>
+			</div>
 
-      {/* Creator badge — demo only */}
-      {isDemo && (
-        <a
-          href="https://x.com/marclou"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fixed bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs text-stone-400 hover:text-stone-200 transition-colors z-20"
-        >
-          <Image
-            src={marcPic}
-            alt="Marc Lou"
-            width={20}
-            height={20}
-            className="w-5 h-5 rounded-full object-cover"
-          />
-          by Marc Lou
-        </a>
-      )}
+			{/* Creator badge — demo only */}
+			{isDemo && (
+				<a
+					href="https://x.com/marclou"
+					target="_blank"
+					rel="noopener noreferrer"
+					className="fixed bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs text-stone-400 hover:text-stone-200 transition-colors z-20"
+				>
+					<Image
+						src={marcPic}
+						alt="Marc Lou"
+						width={20}
+						height={20}
+						className="w-5 h-5 rounded-full object-cover"
+					/>
+					by Marc Lou
+				</a>
+			)}
 
-      {/* Powered by */}
-      <footer className="relative z-10 pb-4">
-        <p className="text-stone-700 text-[10px]">
-          Powered by{" "}
-          <a href="https://datafa.st" className="text-stone-600 hover:text-stone-400 transition-colors">
-            DataFast
-          </a>
-        </p>
-      </footer>
-    </div>
-  );
+			{/* Powered by */}
+			<footer className="relative z-10 pb-4">
+				<p className="text-stone-700 text-[10px]">
+					Powered by{" "}
+					<a href="https://datafa.st" className="text-stone-600 hover:text-stone-400 transition-colors">
+						DataFast
+					</a>
+				</p>
+			</footer>
+		</div>
+	);
 }
