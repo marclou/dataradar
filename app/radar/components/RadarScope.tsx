@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import type { Visitor } from "@/lib/types";
 import { geoToRadar } from "@/lib/geo";
 import {
@@ -11,7 +11,7 @@ import {
 import { feature } from "topojson-client";
 import type { Topology, GeometryCollection } from "topojson-specification";
 
-const RADAR_SIZE = 440;
+const DEFAULT_RADAR_SIZE = 440;
 const SWEEP_SPEED = 90;
 const DOT_BRIGHT_DURATION = 1200;
 const DOT_FADE_DURATION = 2200;
@@ -26,9 +26,11 @@ interface DotState {
 export default function RadarScope({
   visitors,
   onSelectVisitor,
+  size = DEFAULT_RADAR_SIZE,
 }: {
   visitors: Visitor[];
-  onSelectVisitor: (v: Visitor) => void;
+  onSelectVisitor?: (v: Visitor) => void;
+  size?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dotsRef = useRef<Map<string, DotState>>(new Map());
@@ -36,16 +38,20 @@ export default function RadarScope({
   const animFrameRef = useRef<number>(0);
   const lastTimeRef = useRef(0);
   const landRef = useRef<GeoPermissibleObjects | null>(null);
-  const [mapReady, setMapReady] = useState(false);
-  const [, forceUpdate] = useState(0);
 
   // Load world atlas once
   useEffect(() => {
-    fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json")
+    fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
       .then((r) => r.json())
-      .then((topo: Topology<{ land: GeometryCollection }>) => {
-        const geojson = feature(topo, topo.objects.land);
-        landRef.current = geojson;
+      .then((topo: Topology<{ countries: GeometryCollection }>) => {
+        const countries = feature(topo, topo.objects.countries);
+        // Filter out Antarctica (id "010")
+        if ("features" in countries) {
+          countries.features = countries.features.filter(
+            (f) => f.id !== "010"
+          );
+        }
+        landRef.current = countries;
         setMapReady(true);
       })
       .catch(() => {});
@@ -55,7 +61,7 @@ export default function RadarScope({
     const currentDots = dotsRef.current;
     const newMap = new Map<string, DotState>();
     for (const v of visitors) {
-      const pos = geoToRadar(v.latitude, v.longitude, RADAR_SIZE);
+      const pos = geoToRadar(v.latitude, v.longitude, size);
       const existing = currentDots.get(v.id);
       newMap.set(v.id, {
         x: pos.x,
@@ -65,7 +71,7 @@ export default function RadarScope({
       });
     }
     dotsRef.current = newMap;
-  }, [visitors]);
+  }, [visitors, size]);
 
   const draw = useCallback(
     (timestamp: number) => {
@@ -84,8 +90,8 @@ export default function RadarScope({
       const sweepRad = (sweepAngleRef.current * Math.PI) / 180;
 
       const dpr = window.devicePixelRatio || 1;
-      const w = RADAR_SIZE;
-      const h = RADAR_SIZE;
+      const w = size;
+      const h = size;
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       ctx.scale(dpr, dpr);
@@ -168,6 +174,8 @@ export default function RadarScope({
         ctx.clip();
         ctx.beginPath();
         pathGen(landRef.current);
+        ctx.fillStyle = "rgba(34, 211, 238, 0.03)";
+        ctx.fill();
         ctx.strokeStyle = "rgba(34, 211, 238, 0.15)";
         ctx.lineWidth = 0.8;
         ctx.lineJoin = "round";
@@ -326,7 +334,7 @@ export default function RadarScope({
 
       animFrameRef.current = requestAnimationFrame(draw);
     },
-    [mapReady]
+    [size]
   );
 
   useEffect(() => {
@@ -334,17 +342,13 @@ export default function RadarScope({
     return () => cancelAnimationFrame(animFrameRef.current);
   }, [draw]);
 
-  useEffect(() => {
-    const interval = setInterval(() => forceUpdate((n) => n + 1), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   function handleClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!onSelectVisitor) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const scaleX = RADAR_SIZE / rect.width;
-    const scaleY = RADAR_SIZE / rect.height;
+    const scaleX = size / rect.width;
+    const scaleY = size / rect.height;
     const mx = (e.clientX - rect.left) * scaleX;
     const my = (e.clientY - rect.top) * scaleY;
 
@@ -363,7 +367,10 @@ export default function RadarScope({
   }
 
   return (
-    <div className="relative w-[min(440px,85vw)] aspect-square">
+    <div
+      className="relative aspect-square"
+      style={{ width: `min(${size}px, 85vw)` }}
+    >
       <div
         className="absolute -inset-3 rounded-full"
         style={{
@@ -373,10 +380,12 @@ export default function RadarScope({
       />
       <canvas
         ref={canvasRef}
-        width={RADAR_SIZE}
-        height={RADAR_SIZE}
-        onClick={handleClick}
-        className="relative rounded-full cursor-crosshair w-full h-full"
+        width={size}
+        height={size}
+        onClick={onSelectVisitor ? handleClick : undefined}
+        className={`relative rounded-full w-full h-full ${
+          onSelectVisitor ? "cursor-crosshair" : "cursor-default"
+        }`}
       />
     </div>
   );

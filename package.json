@@ -1,12 +1,16 @@
 {
   "name": "dataradar",
   "version": "0.1.0",
+  "main": "electron/main.cjs",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "menubar:dev": "electron .",
+    "menubar:pack": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir --mac",
+    "menubar:dist": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
@@ -25,9 +29,38 @@
     "@types/react-dom": "^19",
     "@types/topojson-client": "^3.1.5",
     "@types/topojson-specification": "^1.0.5",
+    "electron": "^30.5.1",
+    "electron-builder": "^24.13.3",
     "eslint": "^9",
     "eslint-config-next": "^15.2.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "build": {
+    "appId": "com.datafast.dataradar",
+    "productName": "DataRadar",
+    "asar": true,
+    "files": [
+      "app/**/*",
+      "lib/**/*",
+      "public/**/*",
+      ".next/**/*",
+      "electron/**/*",
+      "next.config.ts",
+      "postcss.config.mjs",
+      "tsconfig.json",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": false,
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    }
   }
 }
