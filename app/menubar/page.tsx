@@ -210,26 +210,27 @@ export default function MenubarPage() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/8 px-2 py-0.5">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-70 animate-ping" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-300" />
-            </span>
-            <span className="text-[11px] text-cyan-300 tabular-nums">{liveCount} online</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleSwitchSite}
-            title="Switch website"
-            className="text-[10px] uppercase tracking-[0.12em] text-stone-500 hover:text-stone-300 transition-colors"
-          >
-            reset
-          </button>
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-70 animate-ping" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-300" />
+          </span>
+          <span className="text-[11px] text-stone-500 tabular-nums">{liveCount} online</span>
         </div>
       </div>
 
       <div className="flex-1 flex items-center justify-center">
         <RadarScope visitors={data?.visitors ?? []} size={MENU_RADAR_SIZE} />
+      </div>
+
+      <div className="flex justify-end px-1 pt-1">
+        <button
+          type="button"
+          onClick={handleSwitchSite}
+          title="Switch website"
+          className="text-[9px] text-stone-600 hover:text-stone-400 transition-colors cursor-pointer"
+        >
+          reset
+        </button>
       </div>
     </main>
   );
