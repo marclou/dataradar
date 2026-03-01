@@ -89,31 +89,39 @@ function makeVisitor(): Visitor {
 }
 
 let previousVisitors: Visitor[] = [];
+let baseTarget = 0;
 
 export function getDemoPayload(): RadarPayload {
-  const targetCount = 15 + Math.floor(Math.random() * 31); // 15–45
+  // Set a stable target on first call, then drift slowly (±1 occasionally)
+  if (baseTarget === 0) {
+    baseTarget = 25 + Math.floor(Math.random() * 16); // 25–40 initial
+  } else if (Math.random() < 0.15) {
+    baseTarget += Math.random() < 0.5 ? 1 : -1;
+    baseTarget = Math.max(20, Math.min(45, baseTarget));
+  }
 
   let kept: Visitor[];
   if (previousVisitors.length === 0) {
     kept = [];
   } else {
-    // Keep ~90% of existing visitors
-    kept = previousVisitors.filter(() => Math.random() < 0.9);
+    // Keep ~97% of existing visitors per tick (1-2 leave per cycle)
+    kept = previousVisitors.filter(() => Math.random() < 0.97);
   }
 
   // Fill up to target with new visitors
-  while (kept.length < targetCount) {
+  while (kept.length < baseTarget) {
     kept.push(makeVisitor());
   }
 
-  // Trim if we're over (unlikely but safe)
-  if (kept.length > targetCount) {
-    kept = kept.slice(0, targetCount);
+  // Trim if over target
+  while (kept.length > baseTarget) {
+    const idx = Math.floor(Math.random() * kept.length);
+    kept.splice(idx, 1);
   }
 
-  // Randomly update a page for a few existing visitors (simulates navigation)
+  // ~3% of existing visitors navigate to a new page
   for (const v of kept) {
-    if (Math.random() < 0.05) {
+    if (Math.random() < 0.03) {
       v.page = pick(pages);
     }
   }
@@ -130,18 +138,16 @@ export function getDemoPayload(): RadarPayload {
     referrer: v.referrer,
   }));
 
-  const recentPayments = Math.random() > 0.6
-    ? [
-        {
-          id: makeId(),
-          timestamp: new Date(Date.now() - Math.floor(Math.random() * 600_000)).toISOString(),
-          name: pick(["Alex Kim", "Jordan Lee", "Sam Patel", "Maria Garcia", "Chris Wu", "Nina Berg"]),
-          amount: pick([29, 49, 99, 199]),
-          currency: "USD",
-          isNew: Math.random() > 0.5,
-        },
-      ]
-    : [];
+  const paymentNames = ["Alex Kim", "Jordan Lee", "Sam Patel", "Maria Garcia", "Chris Wu", "Nina Berg", "Lena Müller", "Ravi Shah", "Yuki Tanaka", "Olivia Chen"];
+  const paymentCount = 1 + Math.floor(Math.random() * 3); // 1–3
+  const recentPayments = Array.from({ length: paymentCount }, () => ({
+    id: makeId(),
+    timestamp: new Date(Date.now() - Math.floor(Math.random() * 600_000)).toISOString(),
+    name: pick(paymentNames),
+    amount: pick([29, 49, 79, 99, 149, 199]),
+    currency: "USD",
+    isNew: Math.random() > 0.5,
+  }));
 
   return { count: kept.length, visitors: kept, recentEvents, recentPayments };
 }
