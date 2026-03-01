@@ -123,8 +123,8 @@ export default function RadarScope({
 				ctx.strokeStyle = isMajor
 					? "rgba(34, 211, 238, 0.2)"
 					: isMedium
-						? "rgba(34, 211, 238, 0.1)"
-						: "rgba(34, 211, 238, 0.05)";
+						? "rgba(34, 211, 238, 0.15)"
+						: "rgba(34, 211, 238, 0.1)";
 				ctx.lineWidth = isMajor ? 1 : 0.5;
 				ctx.stroke();
 			}
@@ -194,13 +194,13 @@ export default function RadarScope({
 				// Sweep cone
 				const trailSpan = 0.4;
 				const sweepGrad = ctx.createConicGradient(sweepRad, cx, cy);
-				sweepGrad.addColorStop(0, "rgba(34, 211, 238, 0.14)");
+				sweepGrad.addColorStop(0, "rgba(34, 211, 238, 0.24)");
 				sweepGrad.addColorStop(0.001, "rgba(34, 211, 238, 0)");
 				sweepGrad.addColorStop(1 - trailSpan, "rgba(34, 211, 238, 0)");
-				sweepGrad.addColorStop(1 - trailSpan * 0.7, "rgba(34, 211, 238, 0.01)");
-				sweepGrad.addColorStop(1 - trailSpan * 0.4, "rgba(34, 211, 238, 0.03)");
-				sweepGrad.addColorStop(1 - trailSpan * 0.15, "rgba(34, 211, 238, 0.08)");
-				sweepGrad.addColorStop(1, "rgba(34, 211, 238, 0.14)");
+				sweepGrad.addColorStop(1 - trailSpan * 0.7, "rgba(34, 211, 238, 0.02)");
+				sweepGrad.addColorStop(1 - trailSpan * 0.4, "rgba(34, 211, 238, 0.06)");
+				sweepGrad.addColorStop(1 - trailSpan * 0.15, "rgba(34, 211, 238, 0.13)");
+				sweepGrad.addColorStop(1, "rgba(34, 211, 238, 0.24)");
 
 				ctx.beginPath();
 				ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
