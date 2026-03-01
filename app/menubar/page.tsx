@@ -8,6 +8,10 @@ import type { RadarPayload, SiteMetadata } from "@/lib/types";
 
 const MENU_RADAR_SIZE = 320;
 
+function getKeyStore() {
+  return typeof window !== "undefined" ? window.dataradarKeyStore : undefined;
+}
+
 function isCredentialError(message: string) {
   const normalized = message.toLowerCase();
   return (
@@ -24,7 +28,6 @@ export default function MenubarPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
-  const keyStore = typeof window !== "undefined" ? window.dataradarKeyStore : undefined;
 
   const pollRadar = useCallback(async (key: string) => {
     const payload = await fetchRadarData(key);
@@ -35,6 +38,7 @@ export default function MenubarPage() {
     let cancelled = false;
 
     const loadSavedKey = async () => {
+      const keyStore = getKeyStore();
       const nativeKey = await keyStore?.getApiKey().catch(() => null);
       const localKey = localStorage.getItem(LS_KEY);
       const stored = nativeKey || localKey;
@@ -68,6 +72,7 @@ export default function MenubarPage() {
         const message = err instanceof Error ? err.message : "Request failed";
         if (isCredentialError(message)) {
           localStorage.removeItem(LS_KEY);
+          const keyStore = getKeyStore();
           void keyStore?.clearApiKey();
           setActiveApiKey(null);
           setApiKey("");
@@ -122,6 +127,7 @@ export default function MenubarPage() {
     try {
       await pollRadar(key);
       localStorage.setItem(LS_KEY, key);
+      const keyStore = getKeyStore();
       await keyStore?.setApiKey(key);
       setActiveApiKey(key);
     } catch (err) {
@@ -133,6 +139,7 @@ export default function MenubarPage() {
 
   async function handleSwitchSite() {
     localStorage.removeItem(LS_KEY);
+    const keyStore = getKeyStore();
     await keyStore?.clearApiKey().catch(() => {});
     setActiveApiKey(null);
     setApiKey("");
@@ -144,24 +151,37 @@ export default function MenubarPage() {
   if (!activeApiKey) {
     return (
       <main className="min-h-dvh flex items-center justify-center px-5">
-        <form onSubmit={handleSubmit} className="w-full max-w-[320px] space-y-2">
-          <input
-            type="text"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="DataFast API key"
-            autoFocus
-            className="w-full px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder:text-zinc-500 outline-none focus:ring-1 focus:ring-cyan-500/40 focus:border-cyan-500/40"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 rounded-lg bg-cyan-500 text-zinc-950 text-sm font-semibold disabled:opacity-60"
-          >
-            {loading ? "Connecting..." : "Start radar"}
-          </button>
-          {error ? <p className="text-xs text-red-400/90 pt-1">{error}</p> : null}
-        </form>
+        <div className="w-full max-w-[320px] space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <input
+              type="text"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="DataFast API key"
+              autoFocus
+              className="w-full px-3 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder:text-zinc-500 outline-none focus:ring-1 focus:ring-cyan-500/40 focus:border-cyan-500/40"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 rounded-lg bg-cyan-500 text-zinc-950 text-sm font-semibold disabled:opacity-60"
+            >
+              {loading ? "Connecting..." : "Start radar"}
+            </button>
+            {error ? <p className="text-xs text-red-400/90 pt-1">{error}</p> : null}
+          </form>
+
+          <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/30 px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500 mb-2">
+              How to get your key
+            </p>
+            <ol className="space-y-1.5 text-[11px] text-zinc-400 leading-relaxed">
+              <li>1. Create an account on <a href="https://datafa.st" className="text-cyan-400 hover:text-cyan-300">DataFast</a></li>
+              <li>2. Add the tracking script to your website</li>
+              <li>3. Copy your API key from Settings → API</li>
+            </ol>
+          </div>
+        </div>
       </main>
     );
   }
