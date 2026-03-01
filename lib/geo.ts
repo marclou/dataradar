@@ -13,7 +13,7 @@ export function geoToRadar(lat: number, lng: number, size: number): { x: number;
 	// Normalize latitude (-90..90) to (-1..1), flip y
 	const ny = -lat / 90;
 
-	const scale = 0.85;
+	const scale = 1.15;
 	const px = cx + nx * radius * scale;
 	const py = cy + ny * radius * scale * 0.6;
 

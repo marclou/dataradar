@@ -72,7 +72,7 @@ export default function RadarScope({
 
       const cx = w / 2;
       const cy = h / 2;
-      const r = w / 2 - 4;
+      const r = w / 2 - 16;
 
       // Clear
       ctx.clearRect(0, 0, w, h);
@@ -82,9 +82,29 @@ export default function RadarScope({
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.fillStyle = "#0a0a0a";
       ctx.fill();
-      ctx.strokeStyle = "rgba(34, 211, 238, 0.12)";
+      ctx.strokeStyle = "rgba(34, 211, 238, 0.15)";
       ctx.lineWidth = 1;
       ctx.stroke();
+
+      // Compass tick marks (outside the circle)
+      for (let deg = 0; deg < 360; deg += 2) {
+        const rad = (deg * Math.PI) / 180;
+        const isMajor = deg % 30 === 0;
+        const isMedium = deg % 10 === 0;
+        const tickLen = isMajor ? 8 : isMedium ? 5 : 2.5;
+        const innerR = r + 2;
+        const outerR = r + 2 + tickLen;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(rad) * innerR, cy + Math.sin(rad) * innerR);
+        ctx.lineTo(cx + Math.cos(rad) * outerR, cy + Math.sin(rad) * outerR);
+        ctx.strokeStyle = isMajor
+          ? "rgba(34, 211, 238, 0.25)"
+          : isMedium
+          ? "rgba(34, 211, 238, 0.12)"
+          : "rgba(34, 211, 238, 0.05)";
+        ctx.lineWidth = isMajor ? 1 : 0.5;
+        ctx.stroke();
+      }
 
       // Grid circles
       for (let i = 1; i <= 3; i++) {
@@ -127,8 +147,8 @@ export default function RadarScope({
       ctx.beginPath();
       ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
       ctx.clip();
-      ctx.strokeStyle = "rgba(34, 211, 238, 0.1)";
-      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = "rgba(34, 211, 238, 0.18)";
+      ctx.lineWidth = 1;
       ctx.lineJoin = "round";
       drawMapLines();
       ctx.restore();
