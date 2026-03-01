@@ -10,6 +10,7 @@ import RadarScope from "@/app/radar/components/RadarScope";
 import VisitorCard from "@/app/radar/components/VisitorCard";
 import EventFeed from "@/app/radar/components/EventFeed";
 
+const DOWNLOAD_URL = "/api/download";
 const GITHUB_RELEASE = "https://github.com/marclou/dataradar/releases/latest";
 
 export default function HomePage() {
@@ -49,7 +50,7 @@ export default function HomePage() {
 
 				{/* Download CTA */}
 				<a
-					href={GITHUB_RELEASE}
+					href={DOWNLOAD_URL}
 					className="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-cyan-500 text-black font-semibold text-sm hover:bg-cyan-400 transition-colors"
 				>
 					<svg
