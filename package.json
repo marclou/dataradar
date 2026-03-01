@@ -66,9 +66,7 @@
       "notarize": {
         "teamId": "2KA972GCY8"
       },
-      "extendInfo": {
-        "LSUIElement": true
-      }
+      "extendInfo": {}
     },
     "dmg": {
       "sign": false

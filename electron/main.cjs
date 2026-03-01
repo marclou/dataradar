@@ -1,24 +1,15 @@
 const http = require("node:http");
 const path = require("node:path");
 const fs = require("node:fs/promises");
-const {
-  app,
-  BrowserWindow,
-  ipcMain,
-  Menu,
-  Tray,
-  nativeImage,
-  shell,
-} = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
 const next = require("next");
 
-const WINDOW_WIDTH = 360;
-const WINDOW_HEIGHT = 410;
+const WINDOW_WIDTH = 480;
+const WINDOW_HEIGHT = 480;
 
 let nextApp;
 let nextServer;
 let serverBaseUrl = "";
-let tray = null;
 let windowRef = null;
 let settingsPath = "";
 
@@ -30,8 +21,7 @@ async function loadSettings() {
   try {
     const raw = await fs.readFile(settingsPath, "utf8");
     return JSON.parse(raw);
-  } catch (error) {
-    if (error && error.code === "ENOENT") return {};
+  } catch {
     return {};
   }
 }
@@ -49,13 +39,11 @@ async function getSavedApiKey() {
 async function setSavedApiKey(apiKey) {
   const key = typeof apiKey === "string" ? apiKey.trim() : "";
   const settings = await loadSettings();
-
   if (!key) {
     delete settings.apiKey;
   } else {
     settings.apiKey = key;
   }
-
   await saveSettings(settings);
 }
 
@@ -75,12 +63,7 @@ async function startNextServer() {
   const projectDir = getProjectDir();
   const isDev = !app.isPackaged;
 
-  nextApp = next({
-    dev: isDev,
-    dir: projectDir,
-    hostname: "127.0.0.1",
-  });
-
+  nextApp = next({ dev: isDev, dir: projectDir, hostname: "127.0.0.1" });
   await nextApp.prepare();
 
   const handle = nextApp.getRequestHandler();
@@ -99,44 +82,23 @@ async function startNextServer() {
   serverBaseUrl = `http://127.0.0.1:${address.port}`;
 }
 
-function createTrayIcon() {
-  const iconPath = path.join(__dirname, "assets", "trayTemplate.png");
-  const icon2xPath = path.join(__dirname, "assets", "trayTemplate@2x.png");
-
-  let trayIcon = nativeImage.createFromPath(iconPath);
-
-  if (trayIcon.isEmpty()) {
-    // Fallback: inline SVG
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="none" stroke="black" stroke-width="1.5"/><path d="M9 9 L14.2 11.5" stroke="black" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="10" r="1.2" fill="black"/></svg>`;
-    trayIcon = nativeImage.createFromDataURL(
-      `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`
-    );
-    trayIcon = trayIcon.resize({ width: 18, height: 18 });
-  }
-
-  trayIcon.setTemplateImage(true);
-  return trayIcon;
-}
-
 async function createMainWindow() {
   if (!serverBaseUrl) {
     await startNextServer();
   }
 
+  const iconPath = path.join(__dirname, "assets", "icon.icns");
+
   windowRef = new BrowserWindow({
     width: WINDOW_WIDTH,
     height: WINDOW_HEIGHT,
+    minWidth: 400,
+    minHeight: 400,
     show: false,
-    frame: false,
-    resizable: false,
-    maximizable: false,
-    minimizable: false,
-    fullscreenable: false,
-    skipTaskbar: true,
-    alwaysOnTop: true,
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 12, y: 12 },
     backgroundColor: "#050809",
-    vibrancy: "menu",
-    visualEffectState: "active",
+    icon: iconPath,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -149,89 +111,52 @@ async function createMainWindow() {
     return { action: "deny" };
   });
 
-  windowRef.on("blur", () => {
-    if (!windowRef || windowRef.webContents.isDevToolsOpened()) return;
-    windowRef.hide();
-  });
-
-  windowRef.on("hide", () => {
-    windowRef?.webContents.send("dataradar:visibility", false);
-  });
-
-  windowRef.on("show", () => {
-    windowRef?.webContents.send("dataradar:visibility", true);
-  });
-
   await windowRef.loadURL(`${serverBaseUrl}/menubar`);
-}
-
-function showWindow() {
-  if (!tray || !windowRef) return;
-
-  const trayBounds = tray.getBounds();
-  const x = Math.round(trayBounds.x + trayBounds.width / 2 - WINDOW_WIDTH / 2);
-  const y = Math.round(trayBounds.y + trayBounds.height + 8);
-
-  windowRef.setPosition(x, y, false);
   windowRef.show();
   windowRef.focus();
-}
-
-function toggleWindow() {
-  if (!windowRef) return;
-
-  if (windowRef.isVisible()) {
-    windowRef.hide();
-    return;
-  }
-
-  showWindow();
-}
-
-function attachTrayMenu() {
-  if (!tray || !windowRef) return;
-
-  tray.setToolTip("DataRadar");
-  tray.on("click", toggleWindow);
-  tray.on("right-click", () => {
-    const menu = Menu.buildFromTemplate([
-      { label: "Open Radar", click: showWindow },
-      {
-        label: "Reset API Key",
-        click: async () => {
-          await clearSavedApiKey();
-          if (!windowRef) return;
-          windowRef.webContents
-            .executeJavaScript(
-              "localStorage.removeItem('datafast_api_key'); window.location.reload();",
-              true
-            )
-            .catch(() => {});
-          showWindow();
-        },
-      },
-      { type: "separator" },
-      { label: "Quit DataRadar", click: () => app.quit() },
-    ]);
-    tray.popUpContextMenu(menu);
-  });
 }
 
 async function boot() {
   settingsPath = path.join(app.getPath("userData"), "settings.json");
   setupIpcHandlers();
-  Menu.setApplicationMenu(null);
 
-  // Create tray immediately so the icon appears while Next.js boots
-  tray = new Tray(createTrayIcon());
-  tray.setToolTip("DataRadar — starting...");
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      {
+        label: app.name,
+        submenu: [
+          { role: "about" },
+          { type: "separator" },
+          {
+            label: "Reset API Key",
+            click: async () => {
+              await clearSavedApiKey();
+              if (!windowRef) return;
+              windowRef.webContents
+                .executeJavaScript(
+                  "localStorage.removeItem('datafast_api_key'); window.location.reload();",
+                  true
+                )
+                .catch(() => {});
+            },
+          },
+          { type: "separator" },
+          { role: "quit" },
+        ],
+      },
+      { label: "Edit", submenu: [{ role: "copy" }, { role: "paste" }, { role: "selectAll" }] },
+    ])
+  );
 
   await createMainWindow();
-  attachTrayMenu();
 }
 
 app.whenReady().then(async () => {
-  if (app.dock) app.dock.hide();
+  if (app.dock) {
+    const { nativeImage } = require("electron");
+    const dockIcon = nativeImage.createFromPath(path.join(__dirname, "assets", "icon.icns"));
+    if (!dockIcon.isEmpty()) app.dock.setIcon(dockIcon);
+  }
 
   try {
     await boot();
@@ -241,8 +166,16 @@ app.whenReady().then(async () => {
   }
 });
 
-app.on("window-all-closed", (event) => {
-  event.preventDefault();
+app.on("window-all-closed", () => {
+  app.quit();
+});
+
+app.on("activate", () => {
+  if (!windowRef || windowRef.isDestroyed()) {
+    createMainWindow();
+  } else {
+    windowRef.show();
+  }
 });
 
 app.on("before-quit", () => {

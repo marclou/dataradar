@@ -161,6 +161,7 @@ export default function MenubarPage() {
   if (!activeApiKey) {
     return (
       <main className="min-h-dvh flex items-center justify-center px-5">
+        <div className="fixed inset-x-0 top-0 h-10 z-50" style={{ WebkitAppRegion: "drag" } as React.CSSProperties} />
         <div className="w-full max-w-[320px] space-y-4">
           <form onSubmit={handleSubmit} className="space-y-2">
             <input
@@ -202,7 +203,10 @@ export default function MenubarPage() {
     site?.logo || (site?.domain ? `/api/datafast/radar/favicon?domain=${site.domain}` : null);
 
   return (
-    <main className="min-h-dvh flex flex-col overflow-hidden px-3 py-3">
+    <main className="min-h-dvh flex flex-col overflow-hidden px-3 pt-10 pb-3">
+      {/* Draggable title bar region */}
+      <div className="fixed inset-x-0 top-0 h-10 z-50" style={{ WebkitAppRegion: "drag" } as React.CSSProperties} />
+
       <div className="flex items-center justify-between gap-2 px-1 pb-2">
         <div className="flex items-center gap-2 min-w-0">
           {siteLogo ? (
