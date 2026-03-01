@@ -100,22 +100,11 @@ async function startNextServer() {
 }
 
 function createTrayIcon() {
-  const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
-  <g fill="none" stroke="black" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="9" cy="9" r="6.7" stroke-width="1.9" />
-    <circle cx="9" cy="9" r="3.7" stroke-width="1.3" opacity="0.7" />
-    <path d="M9 9 L14.4 6.2" stroke-width="1.8" />
-  </g>
-  <circle cx="14.4" cy="6.2" r="1.35" fill="black" />
-  <circle cx="9" cy="9" r="1.2" fill="black" />
-</svg>`;
-
-  const image = nativeImage.createFromDataURL(
-    `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`
-  );
-
-  const trayIcon = image.resize({ width: 18, height: 18 });
+  const iconPath = path.join(__dirname, "assets", "trayTemplate.png");
+  const trayIcon = nativeImage.createFromPath(iconPath);
+  if (trayIcon.isEmpty()) {
+    throw new Error(`Tray icon failed to load: ${iconPath}`);
+  }
   trayIcon.setTemplateImage(true);
   return trayIcon;
 }
