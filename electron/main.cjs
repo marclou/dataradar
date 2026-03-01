@@ -102,17 +102,22 @@ async function startNextServer() {
 function createTrayIcon() {
   const svg = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
-  <circle cx="9" cy="9" r="7" fill="none" stroke="black" stroke-width="1.5" />
-  <path d="M9 9 L14.2 11.5" stroke="black" stroke-width="1.5" stroke-linecap="round" />
-  <circle cx="11.7" cy="10.2" r="1.2" fill="black" />
+  <g fill="none" stroke="black" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="9" cy="9" r="6.7" stroke-width="1.9" />
+    <circle cx="9" cy="9" r="3.7" stroke-width="1.3" opacity="0.7" />
+    <path d="M9 9 L14.4 6.2" stroke-width="1.8" />
+  </g>
+  <circle cx="14.4" cy="6.2" r="1.35" fill="black" />
+  <circle cx="9" cy="9" r="1.2" fill="black" />
 </svg>`;
 
   const image = nativeImage.createFromDataURL(
     `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`
   );
 
-  image.setTemplateImage(true);
-  return image.resize({ width: 18, height: 18 });
+  const trayIcon = image.resize({ width: 18, height: 18 });
+  trayIcon.setTemplateImage(true);
+  return trayIcon;
 }
 
 async function createMainWindow() {
