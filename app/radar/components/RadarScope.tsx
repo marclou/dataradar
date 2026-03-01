@@ -128,17 +128,17 @@ export default function RadarScope({
       ctx.stroke();
 
       // Helper: draw all world map polylines
-      function drawMapLines() {
+      function drawMapLines(c: CanvasRenderingContext2D) {
         for (const polyline of WORLD_OUTLINES) {
           if (polyline.length < 2) continue;
-          ctx.beginPath();
+          c.beginPath();
           for (let i = 0; i < polyline.length; i++) {
             const [lat, lng] = polyline[i];
             const pos = geoToRadar(lat, lng, RADAR_SIZE);
-            if (i === 0) ctx.moveTo(pos.x, pos.y);
-            else ctx.lineTo(pos.x, pos.y);
+            if (i === 0) c.moveTo(pos.x, pos.y);
+            else c.lineTo(pos.x, pos.y);
           }
-          ctx.stroke();
+          c.stroke();
         }
       }
 
@@ -150,7 +150,7 @@ export default function RadarScope({
       ctx.strokeStyle = "rgba(34, 211, 238, 0.18)";
       ctx.lineWidth = 1;
       ctx.lineJoin = "round";
-      drawMapLines();
+      drawMapLines(ctx);
       ctx.restore();
 
       // Sweep cone (gradient trail — bright at sweep line, fading behind)
@@ -185,7 +185,7 @@ export default function RadarScope({
       ctx.strokeStyle = mapGrad;
       ctx.lineWidth = 1.2;
       ctx.lineJoin = "round";
-      drawMapLines();
+      drawMapLines(ctx);
       ctx.restore();
 
       // Sweep line (bright edge)

@@ -40,3 +40,9 @@ export interface RadarPayload {
   recentEvents: RecentEvent[];
   recentPayments: RecentPayment[];
 }
+
+export interface SiteMetadata {
+  domain: string | null;
+  name: string | null;
+  logo: string | null;
+}

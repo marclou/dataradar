@@ -4,8 +4,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { LS_KEY, DEMO_API_KEY, POLL_INTERVAL_MS } from "@/lib/constants";
-import { fetchRadarData } from "@/lib/fetch-radar";
-import type { RadarPayload, Visitor } from "@/lib/types";
+import { fetchRadarData, fetchSiteMetadata } from "@/lib/fetch-radar";
+import type { RadarPayload, Visitor, SiteMetadata } from "@/lib/types";
 import marcPic from "@/app/marc.png";
 import RadarScope from "./components/RadarScope";
 import VisitorCard from "./components/VisitorCard";
@@ -15,6 +15,7 @@ export default function RadarPage() {
 	const router = useRouter();
 	const [apiKey, setApiKey] = useState<string | null>(null);
 	const [data, setData] = useState<RadarPayload | null>(null);
+	const [site, setSite] = useState<SiteMetadata | null>(null);
 	const [selected, setSelected] = useState<Visitor | null>(null);
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(true);
@@ -27,6 +28,7 @@ export default function RadarPage() {
 			return;
 		}
 		setApiKey(key);
+		fetchSiteMetadata(key).then(setSite);
 	}, [router]);
 
 	const poll = useCallback(async () => {
@@ -65,33 +67,50 @@ export default function RadarPage() {
 				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-cyan-500/[0.02] blur-[120px]" />
 			</div>
 
-			{/* Header */}
-			<header className="relative z-10 w-full flex items-center justify-between px-5 py-4">
-				<div className="flex items-center gap-3">
-					<h1 className="font-[family-name:var(--font-mono)] text-sm font-bold tracking-[0.15em] uppercase text-stone-300">
-						DATARADAR
-					</h1>
-					{isDemo && (
-						<span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-							demo
-						</span>
-					)}
-				</div>
-				<div className="flex items-center gap-4">
-					{data && (
-						<div className="flex items-center gap-2 text-xs text-stone-500">
-							<span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-							{data.count} visitor{data.count !== 1 ? "s" : ""} online
+		{/* Header */}
+		<header className="relative z-10 w-full flex items-center justify-between px-5 py-4">
+			<div className="flex items-center gap-3">
+				<h1 className="font-[family-name:var(--font-mono)] text-sm font-bold tracking-[0.15em] uppercase text-stone-300">
+					DATARADAR
+				</h1>
+				{isDemo && (
+					<span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+						demo
+					</span>
+				)}
+				{site?.domain && (
+					<>
+						<span className="text-stone-700">·</span>
+						<div className="flex items-center gap-2">
+							{/* eslint-disable-next-line @next/next/no-img-element */}
+							<img
+								src={site.logo || `/api/datafast/radar/favicon?domain=${site.domain}`}
+								alt=""
+								className="w-4 h-4 rounded"
+								loading="lazy"
+							/>
+							<span className="text-xs text-stone-500">
+								{site.name || site.domain}
+							</span>
 						</div>
-					)}
-					<button
-						onClick={handleExit}
-						className="text-xs text-stone-600 hover:text-stone-400 transition-colors cursor-pointer"
-					>
-						Exit
-					</button>
-				</div>
-			</header>
+					</>
+				)}
+			</div>
+			<div className="flex items-center gap-4">
+				{data && (
+					<div className="flex items-center gap-2 text-xs text-stone-500">
+						<span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+						{data.count} visitor{data.count !== 1 ? "s" : ""} online
+					</div>
+				)}
+				<button
+					onClick={handleExit}
+					className="text-xs text-stone-600 hover:text-stone-400 transition-colors cursor-pointer"
+				>
+					Exit
+				</button>
+			</div>
+		</header>
 
 			{/* Main content */}
 			<div className="relative z-10 flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 px-4 pb-8 w-full max-w-6xl">
