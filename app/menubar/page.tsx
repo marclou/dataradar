@@ -24,6 +24,7 @@ export default function MenubarPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const keyStore = typeof window !== "undefined" ? window.dataradarKeyStore : undefined;
 
   const pollRadar = useCallback(async (key: string) => {
     const payload = await fetchRadarData(key);
@@ -31,10 +32,25 @@ export default function MenubarPage() {
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem(LS_KEY);
-    if (!stored) return;
-    setApiKey(stored);
-    setActiveApiKey(stored);
+    let cancelled = false;
+
+    const loadSavedKey = async () => {
+      const nativeKey = await keyStore?.getApiKey().catch(() => null);
+      const localKey = localStorage.getItem(LS_KEY);
+      const stored = nativeKey || localKey;
+
+      if (!stored || cancelled) return;
+
+      localStorage.setItem(LS_KEY, stored);
+      setApiKey(stored);
+      setActiveApiKey(stored);
+    };
+
+    loadSavedKey();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -52,6 +68,7 @@ export default function MenubarPage() {
         const message = err instanceof Error ? err.message : "Request failed";
         if (isCredentialError(message)) {
           localStorage.removeItem(LS_KEY);
+          void keyStore?.clearApiKey();
           setActiveApiKey(null);
           setApiKey("");
           setData(null);
@@ -105,12 +122,23 @@ export default function MenubarPage() {
     try {
       await pollRadar(key);
       localStorage.setItem(LS_KEY, key);
+      await keyStore?.setApiKey(key);
       setActiveApiKey(key);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to connect");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSwitchSite() {
+    localStorage.removeItem(LS_KEY);
+    await keyStore?.clearApiKey().catch(() => {});
+    setActiveApiKey(null);
+    setApiKey("");
+    setData(null);
+    setSite(null);
+    setError("");
   }
 
   if (!activeApiKey) {
@@ -145,7 +173,7 @@ export default function MenubarPage() {
 
   return (
     <main className="min-h-dvh flex flex-col overflow-hidden px-3 py-3">
-      <div className="flex items-center justify-between px-1 pb-2">
+      <div className="flex items-center justify-between gap-2 px-1 pb-2">
         <div className="flex items-center gap-2 min-w-0">
           {siteLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -161,12 +189,22 @@ export default function MenubarPage() {
           <span className="text-[11px] text-stone-300 truncate">{siteLabel}</span>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/8 px-2 py-0.5">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-70 animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-300" />
-          </span>
-          <span className="text-[11px] text-cyan-300 tabular-nums">{liveCount} online</span>
+        <div className="flex items-center gap-1.5">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/25 bg-cyan-500/8 px-2 py-0.5">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-70 animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-300" />
+            </span>
+            <span className="text-[11px] text-cyan-300 tabular-nums">{liveCount} online</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleSwitchSite}
+            title="Switch website"
+            className="text-[10px] uppercase tracking-[0.12em] text-stone-500 hover:text-stone-300 transition-colors"
+          >
+            reset
+          </button>
         </div>
       </div>
 

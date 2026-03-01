@@ -52,7 +52,6 @@ export default function RadarScope({
           );
         }
         landRef.current = countries;
-        setMapReady(true);
       })
       .catch(() => {});
   }, []);
@@ -146,17 +145,6 @@ export default function RadarScope({
         ctx.stroke();
       }
 
-      // Cross lines
-      ctx.strokeStyle = "rgba(34, 211, 238, 0.04)";
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(cx - r, cy);
-      ctx.lineTo(cx + r, cy);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - r);
-      ctx.lineTo(cx, cy + r);
-      ctx.stroke();
 
       // World map (d3-geo projection → canvas)
       if (landRef.current) {

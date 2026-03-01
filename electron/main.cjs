@@ -1,8 +1,10 @@
 const http = require("node:http");
 const path = require("node:path");
+const fs = require("node:fs/promises");
 const {
   app,
   BrowserWindow,
+  ipcMain,
   Menu,
   Tray,
   nativeImage,
@@ -18,9 +20,53 @@ let nextServer;
 let serverBaseUrl = "";
 let tray = null;
 let windowRef = null;
+let settingsPath = "";
 
 function getProjectDir() {
   return app.isPackaged ? app.getAppPath() : path.resolve(__dirname, "..");
+}
+
+async function loadSettings() {
+  try {
+    const raw = await fs.readFile(settingsPath, "utf8");
+    return JSON.parse(raw);
+  } catch (error) {
+    if (error && error.code === "ENOENT") return {};
+    return {};
+  }
+}
+
+async function saveSettings(settings) {
+  await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+  await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf8");
+}
+
+async function getSavedApiKey() {
+  const settings = await loadSettings();
+  return typeof settings.apiKey === "string" ? settings.apiKey : null;
+}
+
+async function setSavedApiKey(apiKey) {
+  const key = typeof apiKey === "string" ? apiKey.trim() : "";
+  const settings = await loadSettings();
+
+  if (!key) {
+    delete settings.apiKey;
+  } else {
+    settings.apiKey = key;
+  }
+
+  await saveSettings(settings);
+}
+
+async function clearSavedApiKey() {
+  await setSavedApiKey("");
+}
+
+function setupIpcHandlers() {
+  ipcMain.handle("dataradar:key:get", () => getSavedApiKey());
+  ipcMain.handle("dataradar:key:set", (_event, apiKey) => setSavedApiKey(apiKey));
+  ipcMain.handle("dataradar:key:clear", () => clearSavedApiKey());
 }
 
 async function startNextServer() {
@@ -91,6 +137,7 @@ async function createMainWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, "preload.cjs"),
     },
   });
 
@@ -140,7 +187,8 @@ function attachTrayMenu() {
       { label: "Open Radar", click: showWindow },
       {
         label: "Reset API Key",
-        click: () => {
+        click: async () => {
+          await clearSavedApiKey();
           if (!windowRef) return;
           windowRef.webContents
             .executeJavaScript(
@@ -159,6 +207,8 @@ function attachTrayMenu() {
 }
 
 async function boot() {
+  settingsPath = path.join(app.getPath("userData"), "settings.json");
+  setupIpcHandlers();
   Menu.setApplicationMenu(null);
   await createMainWindow();
   tray = new Tray(createTrayIcon());
