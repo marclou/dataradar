@@ -12,6 +12,10 @@ function getKeyStore() {
   return typeof window !== "undefined" ? window.dataradarKeyStore : undefined;
 }
 
+function getVisibilityApi() {
+  return typeof window !== "undefined" ? window.dataradarVisibility : undefined;
+}
+
 function isCredentialError(message: string) {
   const normalized = message.toLowerCase();
   return (
@@ -27,7 +31,13 @@ export default function MenubarPage() {
   const [site, setSite] = useState<SiteMetadata | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [windowVisible, setWindowVisible] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  useEffect(() => {
+    const api = getVisibilityApi();
+    api?.onVisibilityChange((visible: boolean) => setWindowVisible(visible));
+  }, []);
 
   const pollRadar = useCallback(async (key: string) => {
     const payload = await fetchRadarData(key);
@@ -219,7 +229,7 @@ export default function MenubarPage() {
       </div>
 
       <div className="flex-1 flex items-center justify-center">
-        <RadarScope visitors={data?.visitors ?? []} size={MENU_RADAR_SIZE} />
+        <RadarScope visitors={data?.visitors ?? []} size={MENU_RADAR_SIZE} paused={!windowVisible} />
       </div>
 
       <div className="flex justify-end px-1 pt-1">

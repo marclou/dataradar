@@ -23,10 +23,12 @@ export default function RadarScope({
 	visitors,
 	onSelectVisitor,
 	size = DEFAULT_RADAR_SIZE,
+	paused = false,
 }: {
 	visitors: Visitor[];
 	onSelectVisitor?: (v: Visitor) => void;
 	size?: number;
+	paused?: boolean;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const dotsRef = useRef<Map<string, DotState>>(new Map());
@@ -315,9 +317,14 @@ export default function RadarScope({
 	);
 
 	useEffect(() => {
+		if (paused) {
+			cancelAnimationFrame(animFrameRef.current);
+			return;
+		}
+		lastTimeRef.current = 0;
 		animFrameRef.current = requestAnimationFrame(draw);
 		return () => cancelAnimationFrame(animFrameRef.current);
-	}, [draw]);
+	}, [draw, paused]);
 
 	function handleClick(e: React.MouseEvent<HTMLCanvasElement>) {
 		if (!onSelectVisitor) return;

@@ -101,10 +101,19 @@ async function startNextServer() {
 
 function createTrayIcon() {
   const iconPath = path.join(__dirname, "assets", "trayTemplate.png");
-  const trayIcon = nativeImage.createFromPath(iconPath);
+  const icon2xPath = path.join(__dirname, "assets", "trayTemplate@2x.png");
+
+  let trayIcon = nativeImage.createFromPath(iconPath);
+
   if (trayIcon.isEmpty()) {
-    throw new Error(`Tray icon failed to load: ${iconPath}`);
+    // Fallback: inline SVG
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="none" stroke="black" stroke-width="1.5"/><path d="M9 9 L14.2 11.5" stroke="black" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="10" r="1.2" fill="black"/></svg>`;
+    trayIcon = nativeImage.createFromDataURL(
+      `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`
+    );
+    trayIcon = trayIcon.resize({ width: 18, height: 18 });
   }
+
   trayIcon.setTemplateImage(true);
   return trayIcon;
 }
@@ -143,6 +152,14 @@ async function createMainWindow() {
   windowRef.on("blur", () => {
     if (!windowRef || windowRef.webContents.isDevToolsOpened()) return;
     windowRef.hide();
+  });
+
+  windowRef.on("hide", () => {
+    windowRef?.webContents.send("dataradar:visibility", false);
+  });
+
+  windowRef.on("show", () => {
+    windowRef?.webContents.send("dataradar:visibility", true);
   });
 
   await windowRef.loadURL(`${serverBaseUrl}/menubar`);
@@ -204,8 +221,12 @@ async function boot() {
   settingsPath = path.join(app.getPath("userData"), "settings.json");
   setupIpcHandlers();
   Menu.setApplicationMenu(null);
-  await createMainWindow();
+
+  // Create tray immediately so the icon appears while Next.js boots
   tray = new Tray(createTrayIcon());
+  tray.setToolTip("DataRadar — starting...");
+
+  await createMainWindow();
   attachTrayMenu();
 }
 
