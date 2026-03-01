@@ -3,12 +3,18 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import type { Visitor } from "@/lib/types";
 import { geoToRadar } from "@/lib/geo";
-import { WORLD_OUTLINES } from "@/lib/world-map";
+import {
+  geoNaturalEarth1,
+  geoPath,
+  type GeoPermissibleObjects,
+} from "d3-geo";
+import { feature } from "topojson-client";
+import type { Topology, GeometryCollection } from "topojson-specification";
 
 const RADAR_SIZE = 440;
-const SWEEP_SPEED = 90; // degrees per second (full rotation = 4s)
-const DOT_BRIGHT_DURATION = 1200; // ms a dot stays bright after sweep
-const DOT_FADE_DURATION = 2200; // ms it takes to fade after bright phase
+const SWEEP_SPEED = 90;
+const DOT_BRIGHT_DURATION = 1200;
+const DOT_FADE_DURATION = 2200;
 
 interface DotState {
   x: number;
@@ -29,13 +35,25 @@ export default function RadarScope({
   const sweepAngleRef = useRef(0);
   const animFrameRef = useRef<number>(0);
   const lastTimeRef = useRef(0);
+  const landRef = useRef<GeoPermissibleObjects | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const [, forceUpdate] = useState(0);
 
-  // Update dot positions when visitors change
+  // Load world atlas once
+  useEffect(() => {
+    fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json")
+      .then((r) => r.json())
+      .then((topo: Topology<{ land: GeometryCollection }>) => {
+        const geojson = feature(topo, topo.objects.land);
+        landRef.current = geojson;
+        setMapReady(true);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     const currentDots = dotsRef.current;
     const newMap = new Map<string, DotState>();
-
     for (const v of visitors) {
       const pos = geoToRadar(v.latitude, v.longitude, RADAR_SIZE);
       const existing = currentDots.get(v.id);
@@ -46,7 +64,6 @@ export default function RadarScope({
         visitor: v,
       });
     }
-
     dotsRef.current = newMap;
   }, [visitors]);
 
@@ -57,10 +74,13 @@ export default function RadarScope({
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const dt = lastTimeRef.current ? (timestamp - lastTimeRef.current) / 1000 : 0;
+      const dt = lastTimeRef.current
+        ? (timestamp - lastTimeRef.current) / 1000
+        : 0;
       lastTimeRef.current = timestamp;
 
-      sweepAngleRef.current = (sweepAngleRef.current + SWEEP_SPEED * dt) % 360;
+      sweepAngleRef.current =
+        (sweepAngleRef.current + SWEEP_SPEED * dt) % 360;
       const sweepRad = (sweepAngleRef.current * Math.PI) / 180;
 
       const dpr = window.devicePixelRatio || 1;
@@ -74,7 +94,6 @@ export default function RadarScope({
       const cy = h / 2;
       const r = w / 2 - 16;
 
-      // Clear
       ctx.clearRect(0, 0, w, h);
 
       // Background circle
@@ -86,7 +105,7 @@ export default function RadarScope({
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // Compass tick marks (outside the circle)
+      // Compass tick marks (outside)
       for (let deg = 0; deg < 360; deg += 2) {
         const rad = (deg * Math.PI) / 180;
         const isMajor = deg % 30 === 0;
@@ -95,13 +114,19 @@ export default function RadarScope({
         const innerR = r + 2;
         const outerR = r + 2 + tickLen;
         ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(rad) * innerR, cy + Math.sin(rad) * innerR);
-        ctx.lineTo(cx + Math.cos(rad) * outerR, cy + Math.sin(rad) * outerR);
+        ctx.moveTo(
+          cx + Math.cos(rad) * innerR,
+          cy + Math.sin(rad) * innerR
+        );
+        ctx.lineTo(
+          cx + Math.cos(rad) * outerR,
+          cy + Math.sin(rad) * outerR
+        );
         ctx.strokeStyle = isMajor
           ? "rgba(34, 211, 238, 0.25)"
           : isMedium
-          ? "rgba(34, 211, 238, 0.12)"
-          : "rgba(34, 211, 238, 0.05)";
+            ? "rgba(34, 211, 238, 0.12)"
+            : "rgba(34, 211, 238, 0.05)";
         ctx.lineWidth = isMajor ? 1 : 0.5;
         ctx.stroke();
       }
@@ -127,68 +152,82 @@ export default function RadarScope({
       ctx.lineTo(cx, cy + r);
       ctx.stroke();
 
-      // Helper: draw all world map polylines
-      function drawMapLines(c: CanvasRenderingContext2D) {
-        for (const polyline of WORLD_OUTLINES) {
-          if (polyline.length < 2) continue;
-          c.beginPath();
-          for (let i = 0; i < polyline.length; i++) {
-            const [lat, lng] = polyline[i];
-            const pos = geoToRadar(lat, lng, RADAR_SIZE);
-            if (i === 0) c.moveTo(pos.x, pos.y);
-            else c.lineTo(pos.x, pos.y);
-          }
-          c.stroke();
-        }
+      // World map (d3-geo projection → canvas)
+      if (landRef.current) {
+        const mapR = r - 4;
+        const projection = geoNaturalEarth1()
+          .translate([cx, cy])
+          .scale(mapR / 1.9);
+
+        const pathGen = geoPath(projection, ctx);
+
+        // Dim base layer
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.beginPath();
+        pathGen(landRef.current);
+        ctx.strokeStyle = "rgba(34, 211, 238, 0.15)";
+        ctx.lineWidth = 0.8;
+        ctx.lineJoin = "round";
+        ctx.stroke();
+        ctx.restore();
+
+        // Sweep cone
+        const trailSpan = 0.15;
+        const sweepGrad = ctx.createConicGradient(sweepRad, cx, cy);
+        sweepGrad.addColorStop(0, "rgba(34, 211, 238, 0.12)");
+        sweepGrad.addColorStop(0.001, "rgba(34, 211, 238, 0)");
+        sweepGrad.addColorStop(1 - trailSpan, "rgba(34, 211, 238, 0)");
+        sweepGrad.addColorStop(
+          1 - trailSpan * 0.6,
+          "rgba(34, 211, 238, 0.01)"
+        );
+        sweepGrad.addColorStop(
+          1 - trailSpan * 0.3,
+          "rgba(34, 211, 238, 0.04)"
+        );
+        sweepGrad.addColorStop(
+          1 - trailSpan * 0.1,
+          "rgba(34, 211, 238, 0.08)"
+        );
+        sweepGrad.addColorStop(1, "rgba(34, 211, 238, 0.12)");
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
+        ctx.fillStyle = sweepGrad;
+        ctx.fill();
+
+        // Bright revealed map layer
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
+        ctx.clip();
+        const mapTrailSpan = 0.25;
+        const mapGrad = ctx.createConicGradient(sweepRad, cx, cy);
+        mapGrad.addColorStop(0, "rgba(34, 211, 238, 0.35)");
+        mapGrad.addColorStop(0.001, "rgba(34, 211, 238, 0)");
+        mapGrad.addColorStop(1 - mapTrailSpan, "rgba(34, 211, 238, 0)");
+        mapGrad.addColorStop(
+          1 - mapTrailSpan * 0.5,
+          "rgba(34, 211, 238, 0.08)"
+        );
+        mapGrad.addColorStop(
+          1 - mapTrailSpan * 0.2,
+          "rgba(34, 211, 238, 0.2)"
+        );
+        mapGrad.addColorStop(1, "rgba(34, 211, 238, 0.35)");
+        ctx.beginPath();
+        pathGen(landRef.current);
+        ctx.strokeStyle = mapGrad;
+        ctx.lineWidth = 1;
+        ctx.lineJoin = "round";
+        ctx.stroke();
+        ctx.restore();
       }
 
-      // World map — dim base layer (always visible)
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.strokeStyle = "rgba(34, 211, 238, 0.18)";
-      ctx.lineWidth = 1;
-      ctx.lineJoin = "round";
-      drawMapLines(ctx);
-      ctx.restore();
-
-      // Sweep cone (gradient trail — bright at sweep line, fading behind)
-      const trailSpan = 0.15;
-      const sweepGrad = ctx.createConicGradient(sweepRad, cx, cy);
-      sweepGrad.addColorStop(0, "rgba(34, 211, 238, 0.12)");
-      sweepGrad.addColorStop(0.001, "rgba(34, 211, 238, 0)");
-      sweepGrad.addColorStop(1 - trailSpan, "rgba(34, 211, 238, 0)");
-      sweepGrad.addColorStop(1 - trailSpan * 0.6, "rgba(34, 211, 238, 0.01)");
-      sweepGrad.addColorStop(1 - trailSpan * 0.3, "rgba(34, 211, 238, 0.04)");
-      sweepGrad.addColorStop(1 - trailSpan * 0.1, "rgba(34, 211, 238, 0.08)");
-      sweepGrad.addColorStop(1, "rgba(34, 211, 238, 0.12)");
-
-      ctx.beginPath();
-      ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
-      ctx.fillStyle = sweepGrad;
-      ctx.fill();
-
-      // World map — bright revealed layer (clipped to sweep trail)
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
-      ctx.clip();
-      const mapTrailSpan = 0.25; // wider reveal than the sweep cone
-      const mapGrad = ctx.createConicGradient(sweepRad, cx, cy);
-      mapGrad.addColorStop(0, "rgba(34, 211, 238, 0.35)");
-      mapGrad.addColorStop(0.001, "rgba(34, 211, 238, 0)");
-      mapGrad.addColorStop(1 - mapTrailSpan, "rgba(34, 211, 238, 0)");
-      mapGrad.addColorStop(1 - mapTrailSpan * 0.5, "rgba(34, 211, 238, 0.08)");
-      mapGrad.addColorStop(1 - mapTrailSpan * 0.2, "rgba(34, 211, 238, 0.2)");
-      mapGrad.addColorStop(1, "rgba(34, 211, 238, 0.35)");
-      ctx.strokeStyle = mapGrad;
-      ctx.lineWidth = 1.2;
-      ctx.lineJoin = "round";
-      drawMapLines(ctx);
-      ctx.restore();
-
-      // Sweep line (bright edge)
+      // Sweep line
       const lineX = cx + Math.cos(sweepRad) * r;
       const lineY = cy + Math.sin(sweepRad) * r;
       ctx.beginPath();
@@ -201,7 +240,6 @@ export default function RadarScope({
       // Dots
       const now = timestamp;
       dotsRef.current.forEach((dot) => {
-        // Check if sweep is hitting this dot
         const dx = dot.x - cx;
         const dy = dot.y - cy;
         let dotAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -224,17 +262,17 @@ export default function RadarScope({
         } else if (elapsed < DOT_BRIGHT_DURATION) {
           opacity = 1;
         } else if (elapsed < DOT_BRIGHT_DURATION + DOT_FADE_DURATION) {
-          const fadeProgress = (elapsed - DOT_BRIGHT_DURATION) / DOT_FADE_DURATION;
+          const fadeProgress =
+            (elapsed - DOT_BRIGHT_DURATION) / DOT_FADE_DURATION;
           opacity = 1 - fadeProgress * 0.85;
         } else {
           opacity = 0.15;
         }
 
-        // Distance from center for clipping
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > r - 6) return;
 
-        // Ping ring when just hit
+        // Ping ring
         if (dot.hitTime > 0 && elapsed < 600) {
           const ringProgress = elapsed / 600;
           ctx.beginPath();
@@ -247,10 +285,17 @@ export default function RadarScope({
         // Glow
         if (opacity > 0.3) {
           const glowGrad = ctx.createRadialGradient(
-            dot.x, dot.y, 0,
-            dot.x, dot.y, 10
+            dot.x,
+            dot.y,
+            0,
+            dot.x,
+            dot.y,
+            10
           );
-          glowGrad.addColorStop(0, `rgba(34, 211, 238, ${opacity * 0.3})`);
+          glowGrad.addColorStop(
+            0,
+            `rgba(34, 211, 238, ${opacity * 0.3})`
+          );
           glowGrad.addColorStop(1, "rgba(34, 211, 238, 0)");
           ctx.beginPath();
           ctx.arc(dot.x, dot.y, 10, 0, Math.PI * 2);
@@ -260,7 +305,13 @@ export default function RadarScope({
 
         // Dot
         ctx.beginPath();
-        ctx.arc(dot.x, dot.y, dot.visitor.isCustomer ? 3.5 : 2.5, 0, Math.PI * 2);
+        ctx.arc(
+          dot.x,
+          dot.y,
+          dot.visitor.isCustomer ? 3.5 : 2.5,
+          0,
+          Math.PI * 2
+        );
         ctx.fillStyle = dot.visitor.isCustomer
           ? `rgba(250, 204, 21, ${opacity})`
           : `rgba(34, 211, 238, ${opacity})`;
@@ -275,7 +326,7 @@ export default function RadarScope({
 
       animFrameRef.current = requestAnimationFrame(draw);
     },
-    []
+    [mapReady]
   );
 
   useEffect(() => {
@@ -283,7 +334,6 @@ export default function RadarScope({
     return () => cancelAnimationFrame(animFrameRef.current);
   }, [draw]);
 
-  // Force re-render periodically to keep React in sync
   useEffect(() => {
     const interval = setInterval(() => forceUpdate((n) => n + 1), 1000);
     return () => clearInterval(interval);
@@ -314,7 +364,6 @@ export default function RadarScope({
 
   return (
     <div className="relative w-[min(440px,85vw)] aspect-square">
-      {/* Outer ring decoration */}
       <div
         className="absolute -inset-3 rounded-full"
         style={{

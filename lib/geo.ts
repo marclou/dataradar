@@ -1,23 +1,21 @@
+import { geoNaturalEarth1 } from "d3-geo";
+
 /**
- * Convert lat/lng to x/y position on the radar circle.
- * Maps world coordinates to a unit circle (0-1 range for x and y).
- * Uses Mercator-like projection centered on the radar.
+ * Convert lat/lng to x/y on the radar using the same
+ * Natural Earth projection as the map canvas.
  */
 export function geoToRadar(lat: number, lng: number, size: number): { x: number; y: number } {
 	const cx = size / 2;
 	const cy = size / 2;
-	const radius = size / 2 - 8;
+	const mapR = size / 2 - 16 - 4; // matches RadarScope: r - 4
 
-	// Normalize longitude (-180..180) to (-1..1)
-	const nx = lng / 180;
-	// Normalize latitude (-90..90) to (-1..1), flip y
-	const ny = -lat / 90;
+	const projection = geoNaturalEarth1()
+		.translate([cx, cy])
+		.scale(mapR / 1.9);
 
-	const scale = 1.15;
-	const px = cx + nx * radius * scale;
-	const py = cy + ny * radius * scale * 0.6;
-
-	return { x: px, y: py };
+	const point = projection([lng, lat]);
+	if (!point) return { x: cx, y: cy };
+	return { x: point[0], y: point[1] };
 }
 
 /**
