@@ -62,7 +62,9 @@
       "gatekeeperAssess": false,
       "entitlements": "electron/entitlements.plist",
       "entitlementsInherit": "electron/entitlements.plist",
-      "signIgnore": ["!node_modules/"],
+      "notarize": {
+        "teamId": "2KA972GCY8"
+      },
       "extendInfo": {
         "LSUIElement": true
       }
