@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #22d3ee;
+  --primary-dim: #0e7490;
+  --radar-green: #22d3ee;
+  --radar-green-dim: rgba(34, 211, 238, 0.15);
+  --radar-sweep: rgba(34, 211, 238, 0.08);
+  --dot-glow: rgba(34, 211, 238, 0.9);
+  --dot-fade: rgba(34, 211, 238, 0.15);
+  --surface: #0c0c0c;
+  --surface-raised: #141414;
+  --surface-border: #1e1e1e;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--surface);
+  color: #e7e5e4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes dot-ping {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2.5); }
+}
+
+@keyframes dot-appear {
+  0% { opacity: 0; transform: scale(0); }
+  50% { opacity: 1; transform: scale(1.4); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes card-slide-in {
+  0% { opacity: 0; transform: translateY(20px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.animate-radar-sweep {
+  animation: radar-sweep 6s linear infinite;
+}
+
+.animate-dot-ping {
+  animation: dot-ping 1.5s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+.animate-dot-appear {
+  animation: dot-appear 0.4s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+.animate-card-slide-in {
+  animation: card-slide-in 0.35s ease-out forwards;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.radar-grid-line {
+  border: 1px solid rgba(34, 211, 238, 0.06);
+  border-radius: 50%;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #292524;
+  border-radius: 2px;
+}
