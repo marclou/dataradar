@@ -36,6 +36,8 @@ export default function RadarScope({
 	const animFrameRef = useRef<number>(0);
 	const lastTimeRef = useRef(0);
 	const landRef = useRef<GeoPermissibleObjects | null>(null);
+	const mapCacheRef = useRef<OffscreenCanvas | null>(null);
+	const mapVersion = useRef(0);
 
 	// Load world atlas once
 	useEffect(() => {
@@ -43,14 +45,107 @@ export default function RadarScope({
 			.then((r) => r.json())
 			.then((topo: Topology<{ countries: GeometryCollection }>) => {
 				const countries = feature(topo, topo.objects.countries);
-				// Filter out Antarctica (id "010")
 				if ("features" in countries) {
 					countries.features = countries.features.filter((f) => f.id !== "010");
 				}
 				landRef.current = countries;
+				mapCacheRef.current = null;
+				mapVersion.current++;
 			})
 			.catch(() => {});
 	}, []);
+
+	// Pre-render static map layers to offscreen canvas
+	useEffect(() => {
+		const land = landRef.current;
+		if (!land) return;
+
+		const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+		const w = size;
+		const cx = w / 2;
+		const cy = w / 2;
+		const r = w / 2 - 16;
+
+		const offscreen = new OffscreenCanvas(w * dpr, w * dpr);
+		const ctx = offscreen.getContext("2d");
+		if (!ctx) return;
+		ctx.scale(dpr, dpr);
+
+		// Outer bezel ring
+		ctx.beginPath();
+		ctx.arc(cx, cy, r + 12, 0, Math.PI * 2);
+		ctx.strokeStyle = "rgba(34, 211, 238, 0.3)";
+		ctx.lineWidth = 0.5;
+		ctx.stroke();
+
+		// Background circle
+		ctx.beginPath();
+		ctx.arc(cx, cy, r, 0, Math.PI * 2);
+		ctx.fillStyle = "#0a0a0a";
+		ctx.fill();
+		ctx.strokeStyle = "rgba(34, 211, 238, 0.1)";
+		ctx.lineWidth = 1.5;
+		ctx.stroke();
+
+		// Compass ticks
+		const bezelR = r + 12;
+		for (let deg = 0; deg < 360; deg += 2) {
+			const rad = (deg * Math.PI) / 180;
+			const isMajor = deg % 30 === 0;
+			const isMedium = deg % 10 === 0;
+			const tickLen = isMajor ? 8 : isMedium ? 5 : 2.5;
+			ctx.beginPath();
+			ctx.moveTo(cx + Math.cos(rad) * (bezelR - tickLen), cy + Math.sin(rad) * (bezelR - tickLen));
+			ctx.lineTo(cx + Math.cos(rad) * bezelR, cy + Math.sin(rad) * bezelR);
+			ctx.strokeStyle = isMajor ? "rgba(34, 211, 238, 0.2)" : isMedium ? "rgba(34, 211, 238, 0.15)" : "rgba(34, 211, 238, 0.1)";
+			ctx.lineWidth = isMajor ? 1 : 0.5;
+			ctx.stroke();
+		}
+
+		// Concentric circles
+		for (let i = 1; i <= 4; i++) {
+			ctx.beginPath();
+			ctx.arc(cx, cy, (r * i) / 5, 0, Math.PI * 2);
+			ctx.strokeStyle = "rgba(34, 211, 238, 0.1)";
+			ctx.lineWidth = 0.5;
+			ctx.stroke();
+		}
+
+		// Crosshair + diagonals
+		ctx.save();
+		ctx.beginPath();
+		ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
+		ctx.clip();
+		ctx.strokeStyle = "rgba(34, 211, 238, 0.1)";
+		ctx.lineWidth = 0.5;
+		ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
+		ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
+		const diag = r * 0.707;
+		ctx.beginPath(); ctx.moveTo(cx - diag, cy - diag); ctx.lineTo(cx + diag, cy + diag); ctx.stroke();
+		ctx.beginPath(); ctx.moveTo(cx + diag, cy - diag); ctx.lineTo(cx - diag, cy + diag); ctx.stroke();
+		ctx.restore();
+
+		// World map
+		const mapR = r - 4;
+		const projection = geoNaturalEarth1().translate([cx, cy]).scale(mapR / 1.9);
+		const pathGen = geoPath(projection, ctx);
+
+		ctx.save();
+		ctx.beginPath();
+		ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
+		ctx.clip();
+		ctx.beginPath();
+		pathGen(land);
+		ctx.fillStyle = "rgba(34, 211, 238, 0.03)";
+		ctx.fill();
+		ctx.strokeStyle = "rgba(34, 211, 238, 0.15)";
+		ctx.lineWidth = 0.8;
+		ctx.lineJoin = "round";
+		ctx.stroke();
+		ctx.restore();
+
+		mapCacheRef.current = offscreen;
+	}, [size, mapVersion.current]);
 
 	useEffect(() => {
 		const currentDots = dotsRef.current;
@@ -94,122 +189,31 @@ export default function RadarScope({
 
 			ctx.clearRect(0, 0, w, h);
 
-			// Outer bezel ring
-			ctx.beginPath();
-			ctx.arc(cx, cy, r + 12, 0, Math.PI * 2);
-			ctx.strokeStyle = "rgba(34, 211, 238, 0.3)";
-			ctx.lineWidth = 0.5;
-			ctx.stroke();
-
-			// Background circle
-			ctx.beginPath();
-			ctx.arc(cx, cy, r, 0, Math.PI * 2);
-			ctx.fillStyle = "#0a0a0a";
-			ctx.fill();
-			ctx.strokeStyle = "rgba(34, 211, 238, 0.1)";
-			ctx.lineWidth = 1.5;
-			ctx.stroke();
-
-			// Compass tick marks (on outer bezel ring)
-			const bezelR = r + 12;
-			for (let deg = 0; deg < 360; deg += 2) {
-				const rad = (deg * Math.PI) / 180;
-				const isMajor = deg % 30 === 0;
-				const isMedium = deg % 10 === 0;
-				const tickLen = isMajor ? 8 : isMedium ? 5 : 2.5;
-				const outerR = bezelR;
-				const innerR = bezelR - tickLen;
-				ctx.beginPath();
-				ctx.moveTo(cx + Math.cos(rad) * innerR, cy + Math.sin(rad) * innerR);
-				ctx.lineTo(cx + Math.cos(rad) * outerR, cy + Math.sin(rad) * outerR);
-				ctx.strokeStyle = isMajor
-					? "rgba(34, 211, 238, 0.2)"
-					: isMedium
-						? "rgba(34, 211, 238, 0.15)"
-						: "rgba(34, 211, 238, 0.1)";
-				ctx.lineWidth = isMajor ? 1 : 0.5;
-				ctx.stroke();
+			// Draw cached static layers (map, grid, compass, etc.)
+			if (mapCacheRef.current) {
+				ctx.drawImage(mapCacheRef.current, 0, 0, w, h);
 			}
 
-			// Inner concentric grid circles
-			for (let i = 1; i <= 4; i++) {
-				ctx.beginPath();
-				ctx.arc(cx, cy, (r * i) / 5, 0, Math.PI * 2);
-				ctx.strokeStyle = "rgba(34, 211, 238, 0.1)";
-				ctx.lineWidth = 0.5;
-				ctx.stroke();
-			}
-
-			// Cartesian crosshair grid
-			ctx.save();
+			// Sweep cone (dynamic — rotates each frame)
+			const trailSpan = 0.4;
+			const sweepGrad = ctx.createConicGradient(sweepRad, cx, cy);
+			sweepGrad.addColorStop(0, "rgba(34, 211, 238, 0.24)");
+			sweepGrad.addColorStop(0.001, "rgba(34, 211, 238, 0)");
+			sweepGrad.addColorStop(1 - trailSpan, "rgba(34, 211, 238, 0)");
+			sweepGrad.addColorStop(1 - trailSpan * 0.7, "rgba(34, 211, 238, 0.02)");
+			sweepGrad.addColorStop(1 - trailSpan * 0.4, "rgba(34, 211, 238, 0.06)");
+			sweepGrad.addColorStop(1 - trailSpan * 0.15, "rgba(34, 211, 238, 0.13)");
+			sweepGrad.addColorStop(1, "rgba(34, 211, 238, 0.24)");
 			ctx.beginPath();
 			ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
-			ctx.clip();
-			ctx.strokeStyle = "rgba(34, 211, 238, 0.1)";
-			ctx.lineWidth = 0.5;
-			// Horizontal
-			ctx.beginPath();
-			ctx.moveTo(cx - r, cy);
-			ctx.lineTo(cx + r, cy);
-			ctx.stroke();
-			// Vertical
-			ctx.beginPath();
-			ctx.moveTo(cx, cy - r);
-			ctx.lineTo(cx, cy + r);
-			ctx.stroke();
-			// Diagonals
-			const diag = r * 0.707;
-			ctx.beginPath();
-			ctx.moveTo(cx - diag, cy - diag);
-			ctx.lineTo(cx + diag, cy + diag);
-			ctx.stroke();
-			ctx.beginPath();
-			ctx.moveTo(cx + diag, cy - diag);
-			ctx.lineTo(cx - diag, cy + diag);
-			ctx.stroke();
-			ctx.restore();
+			ctx.fillStyle = sweepGrad;
+			ctx.fill();
 
-			// World map (d3-geo projection → canvas)
+			// Bright revealed map layer (dynamic — follows sweep)
 			if (landRef.current) {
 				const mapR = r - 4;
-				const projection = geoNaturalEarth1()
-					.translate([cx, cy])
-					.scale(mapR / 1.9);
-
+				const projection = geoNaturalEarth1().translate([cx, cy]).scale(mapR / 1.9);
 				const pathGen = geoPath(projection, ctx);
-
-				// Dim base layer
-				ctx.save();
-				ctx.beginPath();
-				ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
-				ctx.clip();
-				ctx.beginPath();
-				pathGen(landRef.current);
-				ctx.fillStyle = "rgba(34, 211, 238, 0.03)";
-				ctx.fill();
-				ctx.strokeStyle = "rgba(34, 211, 238, 0.15)";
-				ctx.lineWidth = 0.8;
-				ctx.lineJoin = "round";
-				ctx.stroke();
-				ctx.restore();
-
-				// Sweep cone
-				const trailSpan = 0.4;
-				const sweepGrad = ctx.createConicGradient(sweepRad, cx, cy);
-				sweepGrad.addColorStop(0, "rgba(34, 211, 238, 0.24)");
-				sweepGrad.addColorStop(0.001, "rgba(34, 211, 238, 0)");
-				sweepGrad.addColorStop(1 - trailSpan, "rgba(34, 211, 238, 0)");
-				sweepGrad.addColorStop(1 - trailSpan * 0.7, "rgba(34, 211, 238, 0.02)");
-				sweepGrad.addColorStop(1 - trailSpan * 0.4, "rgba(34, 211, 238, 0.06)");
-				sweepGrad.addColorStop(1 - trailSpan * 0.15, "rgba(34, 211, 238, 0.13)");
-				sweepGrad.addColorStop(1, "rgba(34, 211, 238, 0.24)");
-
-				ctx.beginPath();
-				ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
-				ctx.fillStyle = sweepGrad;
-				ctx.fill();
-
-				// Bright revealed map layer
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);

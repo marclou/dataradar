@@ -12,8 +12,14 @@ function getKeyStore() {
   return typeof window !== "undefined" ? window.dataradarKeyStore : undefined;
 }
 
-function getVisibilityApi() {
-  return typeof window !== "undefined" ? window.dataradarVisibility : undefined;
+function usePageVisible() {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const handler = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, []);
+  return visible;
 }
 
 function isCredentialError(message: string) {
@@ -31,13 +37,8 @@ export default function MenubarPage() {
   const [site, setSite] = useState<SiteMetadata | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [windowVisible, setWindowVisible] = useState(true);
+  const pageVisible = usePageVisible();
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
-
-  useEffect(() => {
-    const api = getVisibilityApi();
-    api?.onVisibilityChange((visible: boolean) => setWindowVisible(visible));
-  }, []);
 
   const pollRadar = useCallback(async (key: string) => {
     const payload = await fetchRadarData(key);
@@ -68,7 +69,10 @@ export default function MenubarPage() {
   }, []);
 
   useEffect(() => {
-    if (!activeApiKey) return;
+    if (!activeApiKey || !pageVisible) {
+      clearInterval(intervalRef.current);
+      return;
+    }
 
     let cancelled = false;
     setLoading(true);
@@ -102,7 +106,7 @@ export default function MenubarPage() {
       cancelled = true;
       clearInterval(intervalRef.current);
     };
-  }, [activeApiKey, pollRadar]);
+  }, [activeApiKey, pollRadar, pageVisible]);
 
   useEffect(() => {
     if (!activeApiKey) return;
@@ -236,7 +240,7 @@ export default function MenubarPage() {
       </div>
 
       <div className="flex-1 flex items-center justify-center">
-        <RadarScope visitors={data?.visitors ?? []} size={MENU_RADAR_SIZE} paused={!windowVisible} />
+        <RadarScope visitors={data?.visitors ?? []} size={MENU_RADAR_SIZE} paused={!pageVisible} />
       </div>
 
       <div className="flex justify-end px-1 pt-1">

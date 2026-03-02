@@ -87,8 +87,8 @@ async function createMainWindow() {
     height: 480,
     minWidth: 400,
     minHeight: 400,
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 12, y: 12 },
+    frame: false,
+    titleBarStyle: "hidden",
     backgroundColor: "#050809",
     icon: path.join(__dirname, "assets", "icon.icns"),
     webPreferences: {
