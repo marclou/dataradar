@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import type { Visitor } from "@/lib/types";
 import { geoToRadar } from "@/lib/geo";
 import { geoNaturalEarth1, geoPath, type GeoPermissibleObjects } from "d3-geo";
@@ -37,7 +37,7 @@ export default function RadarScope({
 	const lastTimeRef = useRef(0);
 	const landRef = useRef<GeoPermissibleObjects | null>(null);
 	const mapCacheRef = useRef<OffscreenCanvas | null>(null);
-	const mapVersion = useRef(0);
+	const [mapReady, setMapReady] = useState(false);
 
 	// Load world atlas once
 	useEffect(() => {
@@ -50,7 +50,7 @@ export default function RadarScope({
 				}
 				landRef.current = countries;
 				mapCacheRef.current = null;
-				mapVersion.current++;
+				setMapReady(true);
 			})
 			.catch(() => {});
 	}, []);
@@ -58,7 +58,6 @@ export default function RadarScope({
 	// Pre-render static map layers to offscreen canvas
 	useEffect(() => {
 		const land = landRef.current;
-		if (!land) return;
 
 		const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
 		const w = size;
@@ -125,27 +124,29 @@ export default function RadarScope({
 		ctx.beginPath(); ctx.moveTo(cx + diag, cy - diag); ctx.lineTo(cx - diag, cy + diag); ctx.stroke();
 		ctx.restore();
 
-		// World map
-		const mapR = r - 4;
-		const projection = geoNaturalEarth1().translate([cx, cy]).scale(mapR / 1.9);
-		const pathGen = geoPath(projection, ctx);
+		// World map (only if loaded)
+		if (land) {
+			const mapR = r - 4;
+			const projection = geoNaturalEarth1().translate([cx, cy]).scale(mapR / 1.9);
+			const pathGen = geoPath(projection, ctx);
 
-		ctx.save();
-		ctx.beginPath();
-		ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
-		ctx.clip();
-		ctx.beginPath();
-		pathGen(land);
-		ctx.fillStyle = "rgba(34, 211, 238, 0.03)";
-		ctx.fill();
-		ctx.strokeStyle = "rgba(34, 211, 238, 0.15)";
-		ctx.lineWidth = 0.8;
-		ctx.lineJoin = "round";
-		ctx.stroke();
-		ctx.restore();
+			ctx.save();
+			ctx.beginPath();
+			ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
+			ctx.clip();
+			ctx.beginPath();
+			pathGen(land);
+			ctx.fillStyle = "rgba(34, 211, 238, 0.03)";
+			ctx.fill();
+			ctx.strokeStyle = "rgba(34, 211, 238, 0.15)";
+			ctx.lineWidth = 0.8;
+			ctx.lineJoin = "round";
+			ctx.stroke();
+			ctx.restore();
+		}
 
 		mapCacheRef.current = offscreen;
-	}, [size, mapVersion.current]);
+	}, [size, mapReady]);
 
 	useEffect(() => {
 		const currentDots = dotsRef.current;
