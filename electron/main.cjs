@@ -1,11 +1,8 @@
 const http = require("node:http");
 const path = require("node:path");
 const fs = require("node:fs/promises");
-const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, nativeImage, shell } = require("electron");
 const next = require("next");
-
-const WINDOW_WIDTH = 480;
-const WINDOW_HEIGHT = 480;
 
 let nextApp;
 let nextServer;
@@ -83,22 +80,17 @@ async function startNextServer() {
 }
 
 async function createMainWindow() {
-  if (!serverBaseUrl) {
-    await startNextServer();
-  }
-
-  const iconPath = path.join(__dirname, "assets", "icon.icns");
+  await startNextServer();
 
   windowRef = new BrowserWindow({
-    width: WINDOW_WIDTH,
-    height: WINDOW_HEIGHT,
+    width: 480,
+    height: 480,
     minWidth: 400,
     minHeight: 400,
-    show: false,
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 12, y: 12 },
     backgroundColor: "#050809",
-    icon: iconPath,
+    icon: path.join(__dirname, "assets", "icon.icns"),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -111,14 +103,22 @@ async function createMainWindow() {
     return { action: "deny" };
   });
 
+  windowRef.once("ready-to-show", () => {
+    windowRef.show();
+    windowRef.focus();
+  });
+
   await windowRef.loadURL(`${serverBaseUrl}/menubar`);
-  windowRef.show();
-  windowRef.focus();
 }
 
-async function boot() {
+app.whenReady().then(async () => {
   settingsPath = path.join(app.getPath("userData"), "settings.json");
   setupIpcHandlers();
+
+  if (app.dock) {
+    const dockIcon = nativeImage.createFromPath(path.join(__dirname, "assets", "icon.icns"));
+    if (!dockIcon.isEmpty()) app.dock.setIcon(dockIcon);
+  }
 
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
@@ -131,13 +131,11 @@ async function boot() {
             label: "Reset API Key",
             click: async () => {
               await clearSavedApiKey();
-              if (!windowRef) return;
-              windowRef.webContents
-                .executeJavaScript(
-                  "localStorage.removeItem('datafast_api_key'); window.location.reload();",
-                  true
-                )
-                .catch(() => {});
+              if (windowRef) {
+                windowRef.webContents
+                  .executeJavaScript("localStorage.removeItem('datafast_api_key'); window.location.reload();", true)
+                  .catch(() => {});
+              }
             },
           },
           { type: "separator" },
@@ -148,27 +146,15 @@ async function boot() {
     ])
   );
 
-  await createMainWindow();
-}
-
-app.whenReady().then(async () => {
-  if (app.dock) {
-    const { nativeImage } = require("electron");
-    const dockIcon = nativeImage.createFromPath(path.join(__dirname, "assets", "icon.icns"));
-    if (!dockIcon.isEmpty()) app.dock.setIcon(dockIcon);
-  }
-
   try {
-    await boot();
+    await createMainWindow();
   } catch (error) {
     console.error("Failed to start DataRadar:", error);
     app.quit();
   }
 });
 
-app.on("window-all-closed", () => {
-  app.quit();
-});
+app.on("window-all-closed", () => app.quit());
 
 app.on("activate", () => {
   if (!windowRef || windowRef.isDestroyed()) {
@@ -179,7 +165,5 @@ app.on("activate", () => {
 });
 
 app.on("before-quit", () => {
-  if (nextServer) {
-    nextServer.close();
-  }
+  if (nextServer) nextServer.close();
 });

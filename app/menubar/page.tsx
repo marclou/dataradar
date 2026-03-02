@@ -163,6 +163,9 @@ export default function MenubarPage() {
       <main className="min-h-dvh flex items-center justify-center px-5">
         <div className="fixed inset-x-0 top-0 h-10 z-50" style={{ WebkitAppRegion: "drag" } as React.CSSProperties} />
         <div className="w-full max-w-[320px] space-y-4">
+          <h1 className="font-[family-name:var(--font-mono)] text-lg font-bold tracking-[0.15em] uppercase text-stone-300 text-center mb-2">
+            DATARADAR
+          </h1>
           <form onSubmit={handleSubmit} className="space-y-2">
             <input
               type="text"
