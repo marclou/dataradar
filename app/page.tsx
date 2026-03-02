@@ -102,7 +102,7 @@ export default function HomePage() {
 
 			{/* Footer */}
 			<footer className="relative z-10 pb-6 flex flex-col items-center gap-3">
-				<p className="text-stone-700 text-[10px]">
+				<p className="text-stone-700 text-[12px]">
 					Powered by{" "}
 					<a href="https://datafa.st" className="text-stone-600 hover:text-stone-400 transition-colors">
 						DataFast
