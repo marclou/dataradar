@@ -6,8 +6,8 @@ contextBridge.exposeInMainWorld("dataradarKeyStore", {
   clearApiKey: () => ipcRenderer.invoke("dataradar:key:clear"),
 });
 
-contextBridge.exposeInMainWorld("dataradarVisibility", {
-  onVisibilityChange: (callback) => {
-    ipcRenderer.on("dataradar:visibility", (_event, visible) => callback(visible));
+contextBridge.exposeInMainWorld("dataradarFocus", {
+  onFocusChange: (callback) => {
+    ipcRenderer.on("dataradar:focus", (_event, focused) => callback(focused));
   },
 });

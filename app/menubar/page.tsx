@@ -12,14 +12,26 @@ function getKeyStore() {
   return typeof window !== "undefined" ? window.dataradarKeyStore : undefined;
 }
 
-function usePageVisible() {
-  const [visible, setVisible] = useState(true);
+function useAppFocused() {
+  const [focused, setFocused] = useState(true);
   useEffect(() => {
-    const handler = () => setVisible(!document.hidden);
-    document.addEventListener("visibilitychange", handler);
-    return () => document.removeEventListener("visibilitychange", handler);
+    // Electron: use IPC focus events (fires on actual window focus/blur)
+    const electronApi = typeof window !== "undefined" ? window.dataradarFocus : undefined;
+    if (electronApi) {
+      electronApi.onFocusChange((f) => setFocused(f));
+      return;
+    }
+    // Web fallback: window focus/blur
+    const onFocus = () => setFocused(true);
+    const onBlur = () => setFocused(false);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("blur", onBlur);
+    };
   }, []);
-  return visible;
+  return focused;
 }
 
 function isCredentialError(message: string) {
@@ -37,7 +49,7 @@ export default function MenubarPage() {
   const [site, setSite] = useState<SiteMetadata | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const pageVisible = usePageVisible();
+  const appFocused = useAppFocused();
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const pollRadar = useCallback(async (key: string) => {
@@ -69,7 +81,7 @@ export default function MenubarPage() {
   }, []);
 
   useEffect(() => {
-    if (!activeApiKey || !pageVisible) {
+    if (!activeApiKey || !appFocused) {
       clearInterval(intervalRef.current);
       return;
     }
@@ -106,7 +118,7 @@ export default function MenubarPage() {
       cancelled = true;
       clearInterval(intervalRef.current);
     };
-  }, [activeApiKey, pollRadar, pageVisible]);
+  }, [activeApiKey, pollRadar, appFocused]);
 
   useEffect(() => {
     if (!activeApiKey) return;
@@ -240,7 +252,7 @@ export default function MenubarPage() {
       </div>
 
       <div className="flex-1 flex items-center justify-center">
-        <RadarScope visitors={data?.visitors ?? []} size={MENU_RADAR_SIZE} paused={!pageVisible} />
+        <RadarScope visitors={data?.visitors ?? []} size={MENU_RADAR_SIZE} paused={!appFocused} />
       </div>
 
       <div className="flex justify-end px-1 pt-1">

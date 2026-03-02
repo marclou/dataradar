@@ -7,8 +7,8 @@ declare global {
       setApiKey: (apiKey: string) => Promise<void>;
       clearApiKey: () => Promise<void>;
     };
-    dataradarVisibility?: {
-      onVisibilityChange: (callback: (visible: boolean) => void) => void;
+    dataradarFocus?: {
+      onFocusChange: (callback: (focused: boolean) => void) => void;
     };
   }
 }

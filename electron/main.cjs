@@ -103,6 +103,14 @@ async function createMainWindow() {
     return { action: "deny" };
   });
 
+  windowRef.on("focus", () => {
+    windowRef?.webContents.send("dataradar:focus", true);
+  });
+
+  windowRef.on("blur", () => {
+    windowRef?.webContents.send("dataradar:focus", false);
+  });
+
   windowRef.once("ready-to-show", () => {
     windowRef.show();
     windowRef.focus();
