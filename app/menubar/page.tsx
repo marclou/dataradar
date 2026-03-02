@@ -6,8 +6,6 @@ import { LS_KEY, POLL_INTERVAL_MS } from "@/lib/constants";
 import { fetchRadarData, fetchSiteMetadata } from "@/lib/fetch-radar";
 import type { RadarPayload, SiteMetadata } from "@/lib/types";
 
-const MENU_RADAR_SIZE = 320;
-
 function getKeyStore() {
   return typeof window !== "undefined" ? window.dataradarKeyStore : undefined;
 }
@@ -51,6 +49,21 @@ export default function MenubarPage() {
   const [loading, setLoading] = useState(false);
   const appFocused = useAppFocused();
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const radarContainerRef = useRef<HTMLDivElement>(null);
+  const [radarSize, setRadarSize] = useState(0);
+
+  useEffect(() => {
+    const el = radarContainerRef.current;
+    if (!el) return;
+    const measure = () => {
+      const s = Math.min(el.clientWidth, el.clientHeight) - 16;
+      setRadarSize(Math.max(200, s));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [activeApiKey]);
 
   const pollRadar = useCallback(async (key: string) => {
     const payload = await fetchRadarData(key);
@@ -176,7 +189,7 @@ export default function MenubarPage() {
 
   if (!activeApiKey) {
     return (
-      <main className="min-h-dvh flex items-center justify-center px-5">
+      <main className="min-h-dvh flex items-center justify-center px-5 bg-[#050809]">
         <div className="fixed inset-x-0 top-0 h-10 z-50" style={{ WebkitAppRegion: "drag" } as React.CSSProperties} />
         <div className="w-full max-w-[320px] space-y-4">
           <h1 className="font-[family-name:var(--font-mono)] text-lg font-bold tracking-[0.15em] uppercase text-stone-300 text-center mb-2">
@@ -222,7 +235,7 @@ export default function MenubarPage() {
     site?.logo || (site?.domain ? `/api/datafast/radar/favicon?domain=${site.domain}` : null);
 
   return (
-    <main className="min-h-dvh flex flex-col overflow-hidden px-3 pt-10 pb-3">
+    <main className="min-h-dvh flex flex-col overflow-hidden px-3 pt-10 pb-3 bg-[#050809]">
       {/* Draggable title bar region */}
       <div className="fixed inset-x-0 top-0 h-10 z-50" style={{ WebkitAppRegion: "drag" } as React.CSSProperties} />
 
@@ -251,8 +264,10 @@ export default function MenubarPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center">
-        <RadarScope visitors={data?.visitors ?? []} size={MENU_RADAR_SIZE} paused={!appFocused} />
+      <div className="flex-1 flex items-center justify-center p-2" ref={radarContainerRef}>
+        {radarSize > 0 && (
+          <RadarScope visitors={data?.visitors ?? []} size={radarSize} paused={!appFocused} />
+        )}
       </div>
 
       <div className="flex justify-end px-1 pt-1">
